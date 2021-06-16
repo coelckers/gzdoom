@@ -1577,7 +1577,7 @@ class PlayerPawn : Actor
 			}
 			else if (player.air_finished <= Level.maptime && !(Level.maptime & 31))
 			{
-				DamageMobj(NULL, NULL, 2 + ((Level.maptime - player.air_finished) / TICRATE), 'Drowning');
+				DamageMobj(NULL, NULL, 2 + ((Level.maptime - player.air_finished) / TICRATE), 'Drowning', DMG_SECTOR);
 			}
 		}
 	}
@@ -1656,7 +1656,7 @@ class PlayerPawn : Actor
 				if (player.hazardinterval <= 0)
 					player.hazardinterval = 32; // repair invalid hazardinterval
 				if (!(Level.maptime % player.hazardinterval) && player.hazardcount > 16*TICRATE)
-					player.mo.DamageMobj (NULL, NULL, 5, player.hazardtype);
+					player.mo.DamageMobj (NULL, NULL, 5, player.hazardtype, DMG_SECTOR);
 			}
 			player.mo.CheckPoison();
 			player.mo.CheckDegeneration();

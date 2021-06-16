@@ -1271,7 +1271,7 @@ bool AActor::Grind(bool items)
 	if (flags6 & MF6_TOUCHY && (flags6 & MF6_ARMED || IsSentient()))
     {
 		flags6 &= ~MF6_ARMED; // Disarm
-		P_DamageMobj (this, NULL, NULL, health, NAME_Crush, DMG_FORCED);  // kill object
+		P_DamageMobj (this, NULL, NULL, health, NAME_Crush, DMG_FORCED|DMG_SECTOR);  // kill object
 		return true;   // keep checking
     }
 
@@ -2364,7 +2364,7 @@ void P_MonsterFallingDamage (AActor *mo)
 		damage = int((vel - 23)*6);
 	}
 	if (!(mo->Level->flags3 & LEVEL3_PROPERMONSTERFALLINGDAMAGE)) damage = TELEFRAG_DAMAGE;
-	P_DamageMobj (mo, NULL, NULL, damage, NAME_Falling);
+	P_DamageMobj (mo, NULL, NULL, damage, NAME_Falling, DMG_SECTOR);
 }
 
 //
@@ -6232,7 +6232,7 @@ foundone:
 		&& Terrains[terrainnum].DamageAmount
 		&& (thing->Level->time & Terrains[terrainnum].DamageTimeMask);
 	if (dealDamageOnLand)
-		P_DamageMobj(thing, nullptr, nullptr, Terrains[terrainnum].DamageAmount, Terrains[terrainnum].DamageMOD);
+		P_DamageMobj(thing, nullptr, nullptr, Terrains[terrainnum].DamageAmount, Terrains[terrainnum].DamageMOD, DMG_SECTOR);
 
 	// don't splash when touching an underwater floor
 	if (thing->waterlevel >= 1 && pos.Z <= thing->floorz) return Terrains[terrainnum].IsLiquid;
@@ -6330,7 +6330,7 @@ bool P_HitFloor (AActor *thing)
 	if (thing->flags6 & MF6_TOUCHY && ((thing->flags6 & MF6_ARMED) || thing->IsSentient()) && thing->Vel.Z < -5)
 	{
 		thing->flags6 &= ~MF6_ARMED; // Disarm
-		P_DamageMobj (thing, NULL, NULL, thing->health, NAME_Crush, DMG_FORCED);  // kill object
+		P_DamageMobj (thing, NULL, NULL, thing->health, NAME_Crush, DMG_FORCED|DMG_SECTOR);  // kill object
 		return false;
 	}
 

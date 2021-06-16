@@ -1110,20 +1110,28 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 
 		if (!telefragDamage || (target->flags7 & MF7_LAXTELEFRAGDMG)) // TELEFRAG_DAMAGE may only be reduced with LAXTELEFRAGDMG or it may not guarantee its effect.
 		{
-			if (player && damage > 1)
+			if (damage > 1)
 			{
-				// Take half damage in trainer mode
-				damage = int(damage * G_SkillProperty(SKILLP_DamageFactor) * sv_damagefactorplayer);
-			}
-			else if (!player && damage > 1 && !(target->flags & MF_FRIENDLY))
-			{
-				// inflict scaled damage to non-players
-				damage = int(damage * sv_damagefactormobj);
-			}
-			else if (!player && damage > 1 && (target->flags & MF_FRIENDLY))
-			{
-				// inflict scaled damage to non-player friends
-				damage = int(damage * sv_damagefactorfriendly);
+				if (player)
+				{
+					// Take half damage in trainer mode
+					damage = int(damage  
+								* ((flags & DMG_NO_CVAR) ? 1. : sv_damagefactorplayer)
+								* ((flags & DMG_NO_SKILL) ? 1. : G_SkillProperty(SKILLP_DamageFactor)));
+				}
+				else if (!(flags & DMG_NO_CVAR))
+				{
+					if (target->flags & MF_FRIENDLY)
+					{
+						// inflict scaled damage to non-player friends
+						damage = int(damage * sv_damagefactorfriendly);
+					}
+					else
+					{
+						// inflict scaled damage to non-players
+						damage = int(damage * sv_damagefactormobj);
+					}
+				}
 			}
 			// Special damage types
 			if (inflictor)

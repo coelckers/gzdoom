@@ -468,7 +468,7 @@ void P_PlayerInSpecialSector (player_t *player, sector_t * sector)
 			{
 				if (!(player->cheats & (CF_GODMODE | CF_GODMODE2)))
 				{
-					P_DamageMobj(player->mo, NULL, NULL, sector->damageamount, sector->damagetype);
+					P_DamageMobj(player->mo, NULL, NULL, sector->damageamount, sector->damagetype, DMG_SECTOR);
 				}
 				if ((sector->Flags & SECF_ENDLEVEL) && player->health <= 10 && (!deathmatch || !(dmflags & DF_NO_EXIT)))
 				{
@@ -523,6 +523,7 @@ static void DoSectorDamage(AActor *actor, sector_t *sec, int amount, FName type,
 	}
 
 	int dflags = (flags & DAMAGE_NO_ARMOR) ? DMG_NO_ARMOR : 0;
+	dflags |= DMG_SECTOR;
 	P_DamageMobj (actor, NULL, NULL, amount, type, dflags);
 }
 
@@ -658,7 +659,7 @@ void P_PlayerOnSpecialFlat (player_t *player, int floorType)
 		if (ironfeet == NULL)
 		{
 			damage = P_DamageMobj (player->mo, NULL, NULL, Terrains[floorType].DamageAmount,
-				Terrains[floorType].DamageMOD);
+				Terrains[floorType].DamageMOD, DMG_SECTOR);
 		}
 		if (damage > 0 && Terrains[floorType].Splash != -1)
 		{

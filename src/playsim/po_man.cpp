@@ -790,7 +790,7 @@ void FPolyObj::ThrustMobj (AActor *actor, side_t *side)
 		DVector2 pos = actor->Vec2Offset(thrust.X, thrust.Y);
 		if (bHurtOnTouch || !P_CheckMove (actor, pos))
 		{
-			int newdam = P_DamageMobj (actor, nullptr, nullptr, crush, NAME_Crush);
+			int newdam = P_DamageMobj (actor, nullptr, nullptr, crush, NAME_Crush, DMG_SECTOR);
 			P_TraceBleed (newdam > 0 ? newdam : crush, actor);
 		}
 	}
