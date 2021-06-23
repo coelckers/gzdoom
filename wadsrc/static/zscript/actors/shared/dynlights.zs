@@ -15,6 +15,8 @@ class DynamicLight : Actor
 	flagdef noshadowmap: lightflags, 4;
 	flagdef dontlightactors: lightflags, 5;
 	flagdef spot: lightflags, 6;
+	flagdef dontlightothers: lightflags, 7;
+	flagdef dontlightmap: lightflags, 8;
 
 	enum EArgs
 	{
@@ -35,7 +37,9 @@ class DynamicLight : Actor
 		LF_ATTENUATE = 8,
 		LF_NOSHADOWMAP = 16,
 		LF_DONTLIGHTACTORS = 32,
-		LF_SPOT = 64
+		LF_SPOT = 64,
+		LF_DONTLIGHTOTHERS = 128,
+		LF_DONTLIGHTMAP = 256,
 	};
 
 	enum ELightType

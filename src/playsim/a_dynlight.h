@@ -40,7 +40,9 @@ enum LightFlag
 	LF_ATTENUATE = 8,
 	LF_NOSHADOWMAP = 16,
 	LF_DONTLIGHTACTORS = 32,
-	LF_SPOT = 64
+	LF_SPOT = 64,
+	LF_DONTLIGHTOTHERS = 128,
+	LF_DONTLIGHTMAP = 256
 };
 
 typedef TFlags<LightFlag> LightFlags;
@@ -72,6 +74,8 @@ public:
 	void SetDontLightSelf(bool add) { if (add) m_lightFlags |= LF_DONTLIGHTSELF; else m_lightFlags &= ~LF_DONTLIGHTSELF; }
 	void SetAttenuate(bool on) { m_attenuate = on; if (on) m_lightFlags |= LF_ATTENUATE; else m_lightFlags &= ~LF_ATTENUATE; }
 	void SetDontLightActors(bool on) { if (on) m_lightFlags |= LF_DONTLIGHTACTORS; else m_lightFlags &= ~LF_DONTLIGHTACTORS; }
+	void SetDontLightOthers(bool on) { if (on) m_lightFlags |= LF_DONTLIGHTOTHERS; else m_lightFlags &= ~LF_DONTLIGHTOTHERS; }
+	void SetDontLightMap(bool on) { if (on) m_lightFlags |= LF_DONTLIGHTMAP; else m_lightFlags &= ~LF_DONTLIGHTMAP; }
 	void SetNoShadowmap(bool on) { if (on) m_lightFlags |= LF_NOSHADOWMAP; else m_lightFlags &= ~LF_NOSHADOWMAP; }
 	void SetSpot(bool spot) { if (spot) m_lightFlags |= LF_SPOT; else m_lightFlags &= ~LF_SPOT; }
 	void SetSpotInnerAngle(double angle) { m_spotInnerAngle = angle; }
@@ -86,6 +90,7 @@ public:
 		m_pitch = 0.;
 		m_explicitPitch = false;
 	}
+	
 	void SetType(ELightType type) { m_type = type; }
 	void CopyFrom(const FLightDefaults &other)
 	{
@@ -201,7 +206,10 @@ struct FDynamicLight
 
 	bool ShouldLightActor(AActor *check)
 	{
-		return visibletoplayer && IsActive() && (!((*pLightFlags) & LF_DONTLIGHTSELF) || target != check) && !((*pLightFlags) & LF_DONTLIGHTACTORS);
+		return visibletoplayer && IsActive() && 
+				(!((*pLightFlags) & LF_DONTLIGHTSELF) || target != check) &&
+				(!((*pLightFlags) & LF_DONTLIGHTOTHERS) || target == check) && 
+				(!((*pLightFlags) & LF_DONTLIGHTACTORS));
 	}
 
 	void SetOffset(const DVector3 &pos)
@@ -225,6 +233,8 @@ struct FDynamicLight
 	bool DontShadowmap() const { return !!((*pLightFlags) & LF_NOSHADOWMAP); }
 	bool DontLightSelf() const { return !!((*pLightFlags) & (LF_DONTLIGHTSELF|LF_DONTLIGHTACTORS)); }	// dontlightactors implies dontlightself.
 	bool DontLightActors() const { return !!((*pLightFlags) & LF_DONTLIGHTACTORS); }
+	bool DontLightOthers() const { return !!((*pLightFlags) & (LF_DONTLIGHTOTHERS)); }
+	bool DontLightMap() const { return !!((*pLightFlags) & (LF_DONTLIGHTMAP)); }
 	void Deactivate() { m_active = false; }
 	void Activate();
 
