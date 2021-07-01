@@ -34,6 +34,9 @@
 
 #include "textures.h"
 #include "texturemanager.h"
+#if __has_include(<alloca.h>)
+#include <alloca.h>
+#endif
 
 template<class TYPE> 
 void WarpBuffer(TYPE *Pixels, const TYPE *source, int width, int height, int xmul, int ymul, uint64_t time, float Speed, int warptype)

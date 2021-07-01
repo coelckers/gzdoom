@@ -45,6 +45,9 @@
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
+#if defined(__sun)
+#define BSD_COMP
+#endif
 #include <sys/ioctl.h>
 
 #include <SDL.h>

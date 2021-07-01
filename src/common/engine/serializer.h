@@ -221,10 +221,12 @@ FSerializer &Serialize(FSerializer &arc, const char *key, int64_t &value, int64_
 FSerializer &Serialize(FSerializer &arc, const char *key, uint64_t &value, uint64_t *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, int32_t &value, int32_t *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, uint32_t &value, uint32_t *defval);
-FSerializer &Serialize(FSerializer &arc, const char *key, int8_t &value, int8_t *defval);
-FSerializer &Serialize(FSerializer &arc, const char *key, uint8_t &value, uint8_t *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, int16_t &value, int16_t *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, uint16_t &value, uint16_t *defval);
+#if !defined(__sun) && !defined(_CHAR_IS_SIGNED)
+FSerializer &Serialize(FSerializer &arc, const char *key, int8_t &value, int8_t *defval);
+#endif
+FSerializer &Serialize(FSerializer &arc, const char *key, uint8_t &value, uint8_t *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, double &value, double *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, float &value, float *defval);
 FSerializer &Serialize(FSerializer &arc, const char *key, FTextureID &value, FTextureID *defval);

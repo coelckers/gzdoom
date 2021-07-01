@@ -82,6 +82,9 @@
 #include "vm.h"
 #include "texturemanager.h"
 #include "hw_vertexbuilder.h"
+#if __has_include(<alloca.h>)
+#include <alloca.h>
+#endif
 
 enum
 {

@@ -42,6 +42,7 @@
 #include <locale.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <limits.h>
 
 #include "engineerrors.h"
 #include "m_argv.h"
@@ -130,9 +131,9 @@ void I_DetectOS()
 		break;
 	}
 
-	utsname unameInfo;
+	struct utsname unameInfo;
 
-	if (uname(&unameInfo) == 0)
+	if (uname(&unameInfo) >= 0)
 	{
 		const char* const separator = operatingSystem.Len() > 0 ? ", " : "";
 		operatingSystem.AppendFormat("%s%s %s on %s", separator, unameInfo.sysname, unameInfo.release, unameInfo.machine);

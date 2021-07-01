@@ -286,8 +286,10 @@ else()
 		endif()
 	elseif( NOT MINGW )
 		# Generic GCC/Clang requires position independent executable to be enabled explicitly
-		set( ALL_C_FLAGS "${ALL_C_FLAGS} -fPIE" )
-		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie" )
+		if (NOT (CMAKE_SYSTEM_NAME MATCHES "SunOS"))
+			set( ALL_C_FLAGS "${ALL_C_FLAGS} -fPIE" )
+			set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie" )
+		endif()
 	endif( APPLE )
 endif()
 

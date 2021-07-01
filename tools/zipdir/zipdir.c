@@ -36,7 +36,8 @@
 #define stat _stat
 #else
 #include <dirent.h>
-#if !defined(__sun)
+#if __has_include(<fts.h>)
+#define HAVE_FTS_H 1
 #include <fts.h>
 #endif
 #endif
@@ -499,7 +500,7 @@ dir_tree_t *add_dirs(char **argv)
 	return trees;
 }
 
-#elif defined(__sun)
+#elif !defined(HAVE_FTS_H)
 
 //==========================================================================
 //

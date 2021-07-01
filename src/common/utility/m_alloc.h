@@ -40,7 +40,7 @@
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
 #define _msize(p)				malloc_size(p)
-#elif defined(__solaris__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#elif defined(__solaris__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__sun)
 #define _msize(p)				(*((size_t*)(p)-1))
 #elif !defined(_WIN32)
 #ifdef __FreeBSD__

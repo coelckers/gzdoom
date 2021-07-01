@@ -32,6 +32,9 @@
 // the GNU General Public License v3.0.
 
 #include <stdlib.h>
+#if __has_include(<alloca.h>)
+#include <alloca.h>
+#endif
 #include "templates.h"
 #include "doomdef.h"
 #include "sbar.h"

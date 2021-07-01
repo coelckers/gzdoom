@@ -41,6 +41,9 @@
 #ifdef _MSC_VER
 #include <malloc.h>		// for alloca()
 #endif
+#if __has_include(<alloca.h>)
+#include <alloca.h>
+#endif
 
 #include "basics.h"
 #include "m_crc32.h"
