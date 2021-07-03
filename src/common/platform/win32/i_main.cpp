@@ -43,6 +43,8 @@
 
 #include <processenv.h>
 #include <shellapi.h>
+#include <shlwapi.h>
+#include <wchar.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4244)
@@ -561,9 +563,18 @@ INT_PTR CALLBACK ErrorPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
 			{
 				HMODULE hModule = GetModuleHandleW(NULL);
 				WCHAR path[MAX_PATH];
-				GetModuleFileNameW(hModule, path, MAX_PATH);
 
-				ShellExecuteW(NULL, L"open", path, GetCommandLineW(), NULL, SW_SHOWNORMAL);
+				// Remove the first argument.
+				std::wstring cmdline = std::wstring(PathGetArgsW(GetCommandLineW()));
+				if (cmdline.find(L"-waitforprocess", 0) != std::wstring::npos)
+				{
+					// Strip -waitforprocess argument if it is found.
+					cmdline.erase(cmdline.find(L"-waitforprocess", 0));
+				}
+				cmdline += std::wstring(L" -waitforprocess ") + std::to_wstring(GetCurrentProcessId());
+				// Finally restart the application.
+				GetModuleFileNameW(hModule, path, MAX_PATH);				
+				ShellExecuteW(NULL, L"open", path, cmdline.c_str(), NULL, SW_SHOWNORMAL);
 			}
 			PostQuitMessage (0);
 			return TRUE;
@@ -788,6 +799,21 @@ int DoMain (HINSTANCE hInstance)
 	// need to extract the ProcessIdToSessionId function from kernel32.dll manually.
 	HMODULE kernel = GetModuleHandleA ("kernel32.dll");
 	
+	if (Args->CheckParm("-waitforprocess"))
+	{
+		// Try opening the process by its PID.
+		int pidOfProcess = atoi(Args->TakeValue("-waitforprocess"));
+		if (pidOfProcess != 0)
+		{
+			HANDLE handle = OpenProcess(SYNCHRONIZE, FALSE, pidOfProcess);
+			if (handle)
+			{
+				// Wait up to 5 seconds for it to close.
+				WaitForSingleObject(handle, 5000);
+			}
+		}
+	}
+
 	if (Args->CheckParm("-stdout"))
 	{
 		// As a GUI application, we don't normally get a console when we start.

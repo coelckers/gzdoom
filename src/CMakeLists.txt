@@ -112,7 +112,8 @@ if( WIN32 )
 		ws2_32
 		setupapi
 		oleaut32
-		dbghelp )
+		dbghelp
+		shlwapi )
 
 	if( NOT ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		set( ZDOOM_LIBS ${ZDOOM_LIBS} DelayImp )
