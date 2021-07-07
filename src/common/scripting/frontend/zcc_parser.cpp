@@ -421,6 +421,45 @@ PNamespace *ParseOneScript(const int baselump, ZCCParseState &state)
 	for (unsigned i = 0; i < Includes.Size(); i++)
 	{
 		lumpnum = fileSystem.CheckNumForFullName(Includes[i], true);
+		if (lumpnum == -1 && ( Includes[i].IndexOf("./") == 0 || Includes[i].IndexOf("../") == 0 ) ) // relative path resolving
+		{
+			FString fullPath = IncludeLocs[i].FileName.GetChars(); // get full path, format 'wad:filepath/filename'
+			
+			long start = fullPath.IndexOf(":"); // find first ':'
+
+			long end = fullPath.LastIndexOf("/"); // find last '/'
+
+			if (start!=-1&&end!=-1)
+			{
+				FString resolvedPath = fullPath.Mid(start + 1, end - start - 1); // extract filepath from string
+				FString relativePath = Includes[i];
+				if ( relativePath.IndexOf("./") == 0 ) // strip initial marker
+				{
+					relativePath = relativePath.Mid(2);
+				}
+				
+				bool pathOk = true;
+
+				while (relativePath.IndexOf("../") == 0) // go back one folder for each '..'
+				{
+					relativePath = relativePath.Mid(3);
+					long slash_index = resolvedPath.LastIndexOf("/");
+					if (slash_index != -1) {
+						resolvedPath = resolvedPath.Mid(0,slash_index);
+					} else {
+						pathOk = false;
+						break;
+					}
+				}
+				if ( pathOk ) // if '..' parsing was successful
+				{
+					resolvedPath += "/" + relativePath; // add relative path
+
+					lumpnum = fileSystem.CheckNumForFullName(resolvedPath, true); // check for relative include
+				}
+			}
+
+		}
 		if (lumpnum == -1)
 		{
 			IncludeLocs[i].Message(MSG_ERROR, "Include script lump %s not found", Includes[i].GetChars());
