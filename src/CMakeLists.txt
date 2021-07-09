@@ -452,6 +452,15 @@ endif()
 set( PLAT_POSIX_SOURCES
 	posix/i_steam.cpp
 	common/platform/posix/i_system_posix.cpp )
+set( PLAT_IMGUICONSOLE_SOURCES
+	common/platform/posix/sdl/imguiconsole/imgui.cpp
+	common/platform/posix/sdl/imguiconsole/imgui_draw.cpp
+	common/platform/posix/sdl/imguiconsole/imgui_sdl.cpp
+	common/platform/posix/sdl/imguiconsole/imgui_impl_sdl.cpp
+	common/platform/posix/sdl/imguiconsole/imgui_colored_text.cpp
+	common/platform/posix/sdl/imguiconsole/imgui_widgets.cpp
+	common/platform/posix/sdl/imguiconsole/st_start.cpp
+	common/platform/posix/sdl/imguiconsole/st_console.cpp )
 set( PLAT_SDL_SOURCES
 	common/platform/posix/sdl/crashcatcher.c
 	common/platform/posix/sdl/hardware.cpp
@@ -502,7 +511,7 @@ elseif( APPLE )
 	set_source_files_properties( common/platform/posix/osx/iwadpicker_cocoa.mm PROPERTIES COMPILE_FLAGS -fobjc-exceptions )
 else()
 	set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/sdl )
-	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES} )
+	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_IMGUICONSOLE_SOURCES} ${PLAT_UNIX_SOURCES} )
 	set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} )
 endif()
 

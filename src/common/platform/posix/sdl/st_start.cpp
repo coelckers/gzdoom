@@ -39,9 +39,11 @@
 #include <termios.h>
 
 #include "st_start.h"
+#include "startupinfo.h"
 #include "i_system.h"
 #include "c_cvars.h"
 #include "engineerrors.h"
+#include "imguiconsole/st_console.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -104,7 +106,30 @@ static const char SpinnyProgressChars[4] = { '|', '/', '-', '\\' };
 
 FStartupScreen *FStartupScreen::CreateInstance(int max_progress)
 {
-	return new FTTYStartupScreen(max_progress);
+	FStartupScreen* stscreen = nullptr;
+	long hr = -1;
+	if (FConsoleWindow::InstanceExists())
+	{
+		if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
+		{
+			stscreen = new FHexenStartupScreen(max_progress, hr);
+		}
+		else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
+		{
+			stscreen = new FHereticStartupScreen(max_progress, hr);
+		}
+		else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
+		{
+			stscreen = new FStrifeStartupScreen(max_progress, hr);
+		}
+		if (hr == -1)
+		{
+			if (stscreen) delete stscreen;
+			stscreen = new FBasicStartupScreen(max_progress, true);
+		}
+	}
+	if (!stscreen) stscreen = new FTTYStartupScreen(max_progress);
+	return stscreen;
 }
 
 //===========================================================================

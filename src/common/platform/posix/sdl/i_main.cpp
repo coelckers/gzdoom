@@ -52,6 +52,7 @@
 #include "i_system.h"
 #include "i_interface.h"
 #include "printf.h"
+#include "imguiconsole/st_console.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -169,7 +170,6 @@ int main (int argc, char **argv)
 		fprintf (stderr, "Could not initialize SDL:\n%s\n", SDL_GetError());
 		return -1;
 	}
-
 	printf("\n");
 	
 	Args = new FArgs(argc, argv);
@@ -190,9 +190,12 @@ int main (int argc, char **argv)
 	}
 	
 	I_StartupJoysticks();
+	// -nostartup will disable the console too.
+	if (!Args->CheckParm("-nostartup")) FConsoleWindow::CreateInstance();
 
 	const int result = GameMain();
 
+	FConsoleWindow::DeleteInstance();
 	SDL_Quit();
 
 	return result;

@@ -59,6 +59,8 @@
 #include "poly_framebuffer.h"
 #endif
 
+#include "imguiconsole/st_console.h"
+
 // MACROS ------------------------------------------------------------------
 
 #if defined HAVE_VULKAN
@@ -488,6 +490,7 @@ IVideo *gl_CreateVideo()
 SystemBaseFrameBuffer::SystemBaseFrameBuffer (void *, bool fullscreen)
 : DFrameBuffer (vid_defwidth, vid_defheight)
 {
+	FConsoleWindow::DeleteInstance();
 	if (Priv::window != nullptr)
 	{
 		SDL_SetWindowFullscreen(Priv::window, fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);

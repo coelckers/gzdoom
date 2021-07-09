@@ -59,6 +59,8 @@
 #include "palutil.h"
 #include "st_start.h"
 
+#include "imguiconsole/st_console.h"
+
 
 #ifndef NO_GTK
 bool I_GtkAvailable ();
@@ -76,6 +78,10 @@ extern FStartupScreen *StartScreen;
 
 void I_SetIWADInfo()
 {
+	if (FConsoleWindow::InstanceExists())
+	{
+		FConsoleWindow::GetInstance().SetTitleText();
+	}
 }
 
 //
@@ -89,11 +95,15 @@ void Mac_I_FatalError(const char* errortext);
 #ifdef __unix__
 void Unix_I_FatalError(const char* errortext)
 {
-	// Close window or exit fullscreen and release mouse capture
-	SDL_Quit();
+	// Close window or exit fullscreen and release mouse capture if the console isn't running.
+	if (!FConsoleWindow::InstanceExists()) SDL_Quit();
 
 	const char *str;
-	if((str=getenv("KDE_FULL_SESSION")) && strcmp(str, "true") == 0)
+	if (FConsoleWindow::InstanceExists())
+	{
+		FConsoleWindow::GetInstance().ShowFatalError(errortext);
+	}
+	else if((str=getenv("KDE_FULL_SESSION")) && strcmp(str, "true") == 0)
 	{
 		FString cmd;
 		cmd << "kdialog --title \"" GAMENAME " " << GetVersionString()
@@ -144,7 +154,8 @@ void CleanProgressBar()
 	fflush(stdout);
 }
 
-static int ProgressBarCurPos, ProgressBarMaxPos;
+int ProgressBarCurPos, ProgressBarMaxPos;
+bool netinited = false;
 
 void RedrawProgressBar(int CurPos, int MaxPos)
 {
@@ -173,6 +184,7 @@ void RedrawProgressBar(int CurPos, int MaxPos)
 
 void I_PrintStr(const char *cp)
 {
+	if (FConsoleWindow::InstanceExists()) FConsoleWindow::GetInstance().AddText(cp);
 	const char * srcp = cp;
 	FString printData = "";
 	bool terminal = isatty(STDOUT_FILENO);
@@ -223,10 +235,10 @@ void I_PrintStr(const char *cp)
 		}
 	}
 	
-	if (StartScreen) CleanProgressBar();
+	if (StartScreen && !netinited) CleanProgressBar();
 	fputs(printData.GetChars(),stdout);
 	if (terminal) fputs("\033[0m",stdout);
-	if (StartScreen) RedrawProgressBar(ProgressBarCurPos,ProgressBarMaxPos);
+	if (StartScreen && !netinited) RedrawProgressBar(ProgressBarCurPos,ProgressBarMaxPos);
 }
 
 int I_PickIWad (WadStuff *wads, int numwads, bool showwin, int defaultiwad)
@@ -236,6 +248,11 @@ int I_PickIWad (WadStuff *wads, int numwads, bool showwin, int defaultiwad)
 	if (!showwin)
 	{
 		return defaultiwad;
+	}
+
+	if (FConsoleWindow::InstanceExists())
+	{
+		return FConsoleWindow::GetInstance().PickIWad (wads, numwads, showwin, defaultiwad);
 	}
 
 #ifndef __APPLE__

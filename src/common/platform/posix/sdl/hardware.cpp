@@ -42,6 +42,7 @@
 #include "m_argv.h"
 #include "c_console.h"
 #include "printf.h"
+#include "imguiconsole/st_console.h"
 
 IVideo *Video;
 
@@ -59,7 +60,7 @@ void I_ShutdownGraphics ()
 	if (Video)
 		delete Video, Video = NULL;
 
-	SDL_QuitSubSystem (SDL_INIT_VIDEO);
+	if (!FConsoleWindow::InstanceExists()) SDL_QuitSubSystem (SDL_INIT_VIDEO);
 }
 
 void I_InitGraphics ()
@@ -67,7 +68,8 @@ void I_InitGraphics ()
 #ifdef __APPLE__
 	SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, "0");
 #endif // __APPLE__
-
+	FConsoleWindow::DeleteInstance();
+	
 	if (SDL_InitSubSystem (SDL_INIT_VIDEO) < 0)
 	{
 		I_FatalError ("Could not initialize SDL video:\n%s\n", SDL_GetError());
