@@ -237,7 +237,7 @@ UNSAFE_CCMD (dir)
 		do
 		{
 			if (I_FindAttr (&c_file) & FA_DIREC)
-				Printf (PRINT_BOLD, "%s <dir>\n", I_FindName (&c_file));
+				Printf (PRINT_DEFAULT, PRINTF_BOLD, "%s <dir>\n", I_FindName (&c_file));
 			else
 				Printf ("%s\n", I_FindName (&c_file));
 		} while (I_FindNext (file, &c_file) == 0);

@@ -1303,7 +1303,7 @@ void D_DoomLoop ()
 		{
 			if (error.GetMessage ())
 			{
-				Printf (PRINT_BOLD, "\n%s\n", error.GetMessage());
+				Printf (PRINT_DEFAULT, PRINTF_BOLD, "\n%s\n", error.GetMessage());
 			}
 			D_ErrorCleanup ();
 		}
@@ -3139,7 +3139,7 @@ static int D_DoomMain_Internal (void)
 		}
 	}
 
-	if (!batchrun) Printf(PRINT_LOG, "%s version %s\n", GAMENAME, GetVersionString());
+	if (!batchrun) Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%s version %s\n", GAMENAME, GetVersionString());
 
 	D_DoomInit();
 

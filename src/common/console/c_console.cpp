@@ -381,9 +381,9 @@ static void setmsgcolor (int index, int color)
 }
 
 
-void AddToConsole (int printlevel, const char *text)
+void AddToConsole (int printlevel, int printflags, const char *text)
 {
-	conbuffer->AddText(printlevel, MakeUTF8(text));
+	conbuffer->AddText(printlevel, printflags, MakeUTF8(text));
 }
 
 //==========================================================================
@@ -426,34 +426,33 @@ void WriteLineToLog(FILE *LogFile, const char *outline)
 
 extern bool gameisdead;
 
-int PrintString (int iprintlevel, const char *outline)
+int PrintString (int printlevel, int printflags, const char *outline)
 {
 	if (gameisdead)
 		return 0;
 
 	if (!conbuffer) return 0;	// when called too early
-	int printlevel = iprintlevel & PRINT_TYPES;
 	if (printlevel < msglevel || *outline == '\0')
 	{
 		return 0;
 	}
-	if (printlevel != PRINT_LOG || Logfile != nullptr)
+	if (!(printflags & PRINTF_LOGONLY) || Logfile != nullptr)
 	{
 		// Convert everything coming through here to UTF-8 so that all console text is in a consistent format
 		int count;
 		outline = MakeUTF8(outline, &count);
 
-		if (printlevel != PRINT_LOG)
+		if (!(printflags & PRINTF_LOGONLY))
 		{
 			I_PrintStr(outline);
 
-			conbuffer->AddText(printlevel, outline);
-			if (vidactive && screen && !(iprintlevel & PRINT_NONOTIFY) && NotifyStrings)
+			conbuffer->AddText(printlevel, printflags, outline);
+			if (vidactive && screen && !(printflags & PRINTF_NONOTIFY) && NotifyStrings)
 			{
-				NotifyStrings->AddString(iprintlevel, outline);
+				NotifyStrings->AddString(printlevel, printflags, outline);
 			}
 		}
-		if (Logfile != nullptr && !(iprintlevel & PRINT_NOLOG))
+		if (Logfile != nullptr && !(printflags & PRINTF_NOLOG))
 		{
 			WriteLineToLog(Logfile, outline);
 		}
@@ -466,7 +465,14 @@ int VPrintf (int printlevel, const char *format, va_list parms)
 {
 	FString outline;
 	outline.VFormat (format, parms);
-	return PrintString (printlevel, outline.GetChars());
+	return PrintString (printlevel, PRINTF_DEFAULT, outline.GetChars());
+}
+
+int VPrintf(int printlevel, int printflags, const char* format, va_list parms)
+{
+	FString outline;
+	outline.VFormat(format, parms);
+	return PrintString(printlevel, printflags, outline.GetChars());
 }
 
 int Printf (int printlevel, const char *format, ...)
@@ -477,6 +483,18 @@ int Printf (int printlevel, const char *format, ...)
 	va_start (argptr, format);
 	count = VPrintf (printlevel, format, argptr);
 	va_end (argptr);
+
+	return count;
+}
+
+int Printf(int printlevel, int printflags, const char* format, ...)
+{
+	va_list argptr;
+	int count;
+
+	va_start(argptr, format);
+	count = VPrintf(printlevel, printflags, format, argptr);
+	va_end(argptr);
 
 	return count;
 }

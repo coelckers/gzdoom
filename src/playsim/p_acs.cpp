@@ -8758,7 +8758,7 @@ scriptwait:
 					if (type & HUDMSG_LOG)
 					{
 						int consolecolor = color >= CR_BRICK && color <= CR_YELLOW ? color + 'A' : '-';
-						Printf(PRINT_NONOTIFY, "\n" TEXTCOLOR_ESCAPESTR "%c%s\n%s\n%s\n", consolecolor, console_bar, work.GetChars(), console_bar);
+						Printf(PRINT_DEFAULT, PRINTF_NONOTIFY, "\n" TEXTCOLOR_ESCAPESTR "%c%s\n%s\n%s\n", consolecolor, console_bar, work.GetChars(), console_bar);
 					}
 				}
 			}
@@ -9774,7 +9774,7 @@ scriptwait:
 				static bool StrlenInvalidPrintedAlready = false;
 				if (!StrlenInvalidPrintedAlready)
 				{
-					Printf(PRINT_BOLD, "Warning: ACS function strlen called with invalid string argument.\n");
+					Printf(PRINT_DEFAULT, PRINTF_BOLD, "Warning: ACS function strlen called with invalid string argument.\n");
 					StrlenInvalidPrintedAlready = true;
 				}
 				STACK(1) = 0;
@@ -10441,13 +10441,13 @@ int P_StartScript (FLevelLocals *Level, AActor *who, line_t *where, int script, 
 				// make sure only net scripts are run.
 				if (!(scriptdata->Flags & SCRIPTF_Net))
 				{
-					Printf(PRINT_BOLD, "%s tried to puke %s (\n",
+					Printf(PRINT_DEFAULT, PRINTF_BOLD, "%s tried to puke %s (\n",
 						who->player->userinfo.GetName(), ScriptPresentation(script).GetChars());
 					for (int i = 0; i < argcount; ++i)
 					{
-						Printf(PRINT_BOLD, "%d%s", args[i], i == argcount-1 ? "" : ", ");
+						Printf(PRINT_DEFAULT, PRINTF_BOLD, "%d%s", args[i], i == argcount-1 ? "" : ", ");
 					}
-					Printf(PRINT_BOLD, ")\n");
+					Printf(PRINT_DEFAULT, PRINTF_BOLD, ")\n");
 					return false;
 				}
 			}

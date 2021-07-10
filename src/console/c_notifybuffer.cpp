@@ -45,7 +45,7 @@
 struct FNotifyBuffer : public FNotifyBufferBase
 {
 public:
-	void AddString(int printlevel, FString source) override;
+	void AddString(int printlevel, int printflags, FString source) override;
 	void Clear() override;
 	void Draw() override;
 
@@ -83,7 +83,7 @@ void FNotifyBuffer::Clear()
 
 }
 
-void FNotifyBuffer::AddString(int printlevel, FString source)
+void FNotifyBuffer::AddString(int printlevel, int printflags, FString source)
 {
 	if (!show_messages ||
 		source.IsEmpty() ||
@@ -97,7 +97,7 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 	{
 		IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessNotify)
 		{
-			VMValue params[] = { (DObject*)StatusBar, printlevel, &source };
+			VMValue params[] = { (DObject*)StatusBar, printlevel, &source, printflags};
 			int rv;
 			VMReturn ret(&rv);
 			VMCall(func, params, countof(params), &ret, 1);
@@ -107,7 +107,7 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 
 	int width = DisplayWidth / active_con_scaletext(twod, generic_ui);
 	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
-	FNotifyBufferBase::AddString(printlevel & PRINT_TYPES, font, source, width, con_notifytime, con_notifylines);
+	FNotifyBufferBase::AddString(printlevel, font, source, width, con_notifytime, con_notifylines);
 }
 
 void FNotifyBuffer::Draw()

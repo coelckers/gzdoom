@@ -1078,11 +1078,11 @@ void DumpStateHelper(FStateLabels *StateList, const FString &prefix)
 			const PClassActor *owner = FState::StaticFindStateOwner(StateList->Labels[i].State);
 			if (owner == NULL)
 			{
-				Printf(PRINT_LOG, "%s%s: invalid\n", prefix.GetChars(), StateList->Labels[i].Label.GetChars());
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%s%s: invalid\n", prefix.GetChars(), StateList->Labels[i].Label.GetChars());
 			}
 			else
 			{
-				Printf(PRINT_LOG, "%s%s: %s\n", prefix.GetChars(), StateList->Labels[i].Label.GetChars(), FState::StaticGetStateName(StateList->Labels[i].State).GetChars());
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%s%s: %s\n", prefix.GetChars(), StateList->Labels[i].Label.GetChars(), FState::StaticGetStateName(StateList->Labels[i].State).GetChars());
 			}
 		}
 		if (StateList->Labels[i].Children != NULL)
@@ -1097,9 +1097,9 @@ CCMD(dumpstates)
 	for (unsigned int i = 0; i < PClassActor::AllActorClasses.Size(); ++i)
 	{
 		PClassActor *info = PClassActor::AllActorClasses[i];
-		Printf(PRINT_LOG, "State labels for %s\n", info->TypeName.GetChars());
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "State labels for %s\n", info->TypeName.GetChars());
 		DumpStateHelper(info->GetStateLabels(), "");
-		Printf(PRINT_LOG, "----------------------------\n");
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "----------------------------\n");
 	}
 }
 

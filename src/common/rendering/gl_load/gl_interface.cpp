@@ -218,10 +218,10 @@ void gl_PrintStartupLog()
 	Printf ("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
 	Printf ("GL_VERSION: %s (%s profile)\n", glGetString(GL_VERSION), (v & GL_CONTEXT_CORE_PROFILE_BIT)? "Core" : "Compatibility");
 	Printf ("GL_SHADING_LANGUAGE_VERSION: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-	Printf (PRINT_LOG, "GL_EXTENSIONS:");
+	Printf (PRINT_DEFAULT, PRINTF_LOGONLY, "GL_EXTENSIONS:");
 	for (unsigned i = 0; i < m_Extensions.Size(); i++)
 	{
-		Printf(PRINT_LOG, " %s", m_Extensions[i].GetChars());
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, " %s", m_Extensions[i].GetChars());
 	}
 
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &v);

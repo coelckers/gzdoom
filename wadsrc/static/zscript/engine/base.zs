@@ -128,16 +128,21 @@ enum EMonospacing
 
 enum EPrintLevel
 {
-	PRINT_LOW,		// pickup messages
+	PRINT_DEFAULT,	// Default to PRINT_LOW
+	PRINT_LOW = 0,	// pickup messages
 	PRINT_MEDIUM,	// death messages
 	PRINT_HIGH,		// critical messages
 	PRINT_CHAT,		// chat messages
 	PRINT_TEAMCHAT,	// chat messages from a teammate
-	PRINT_LOG,		// only to logfile
-	PRINT_BOLD = 200,				// What Printf_Bold used
-	PRINT_TYPES = 1023,		// Bitmask.
-	PRINT_NONOTIFY = 1024,	// Flag - do not add to notify buffer
-	PRINT_NOLOG = 2048,		// Flag - do not print to log file
+};
+
+enum EPrintFlags
+{
+	PRINTF_DEFAULT,			// Default to normal print
+	PRINTF_BOLD = 200,		// What Printf_Bold used
+	PRINTF_LOGONLY = 512,	// Flag - Only print to logfile
+	PRINTF_NONOTIFY = 1024,	// Flag - Do not add to notify buffer
+	PRINTF_NOLOG = 2048,	// Flag - Do not print to log file
 };
 
 struct _ native	// These are the global variables, the struct is only here to avoid extending the parser for this.
@@ -501,6 +506,7 @@ struct Console native
 {
 	native static void HideConsole();
 	native static vararg void Printf(string fmt, ...);
+	native static vararg void PrintString(int printlevel, int printflags, string fmt, ...);
 }
 
 struct CVar native

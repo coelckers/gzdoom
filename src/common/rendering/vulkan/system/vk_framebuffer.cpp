@@ -690,12 +690,12 @@ void VulkanFrameBuffer::PrintStartupLog()
 	Printf("Vulkan device type: %s\n", deviceType.GetChars());
 	Printf("Vulkan version: %s (api) %s (driver)\n", apiVersion.GetChars(), driverVersion.GetChars());
 
-	Printf(PRINT_LOG, "Vulkan extensions:");
+	Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Vulkan extensions:");
 	for (const VkExtensionProperties &p : device->PhysicalDevice.Extensions)
 	{
-		Printf(PRINT_LOG, " %s", p.extensionName);
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, " %s", p.extensionName);
 	}
-	Printf(PRINT_LOG, "\n");
+	Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n");
 
 	const auto &limits = props.limits;
 	Printf("Max. texture size: %d\n", limits.maxImageDimension2D);

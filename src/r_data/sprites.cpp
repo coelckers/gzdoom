@@ -612,7 +612,7 @@ void R_InitSkins (void)
 			strncpy (key, sc.String, sizeof(key)-1);
 			if (!sc.GetString() || sc.String[0] != '=')
 			{
-				Printf (PRINT_BOLD, "Bad format for skin %d: %s\n", (int)i, key);
+				Printf (PRINT_DEFAULT, PRINTF_BOLD, "Bad format for skin %d: %s\n", (int)i, key);
 				break;
 			}
 			sc.GetString ();
@@ -624,7 +624,7 @@ void R_InitSkins (void)
 					if (Skins[i].Name.CompareNoCase(Skins[j].Name) == 0)
 					{
 						Skins[i].Name.Format("skin%u", i);
-						Printf (PRINT_BOLD, "Skin %s duplicated as %s\n", Skins[j].Name.GetChars(), Skins[i].Name.GetChars());
+						Printf (PRINT_DEFAULT, PRINTF_BOLD, "Skin %s duplicated as %s\n", Skins[j].Name.GetChars(), Skins[i].Name.GetChars());
 						break;
 					}
 				}
@@ -861,7 +861,7 @@ void R_InitSkins (void)
 
 				if (spr == 0 && maxframe <= 0)
 				{
-					Printf (PRINT_BOLD, "Skin %s (#%u) has no frames. Removing.\n", Skins[i].Name.GetChars(), i);
+					Printf (PRINT_DEFAULT, PRINTF_BOLD, "Skin %s (#%u) has no frames. Removing.\n", Skins[i].Name.GetChars(), i);
 					remove = true;
 					break;
 				}

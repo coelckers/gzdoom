@@ -1389,6 +1389,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 	const char *type = "";
 	const char *color;
 	int level = PRINT_HIGH;
+	int flags = PRINTF_DEFAULT;
 
 	switch (severity)
 	{
@@ -1418,7 +1419,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 	case MSG_DEBUGLOG:
 	case MSG_LOG:
 		type = "message";
-		level = PRINT_LOG;
+		flags = PRINTF_LOGONLY;
 		color = "";
 		break;
 
@@ -1427,7 +1428,7 @@ void FScriptPosition::Message (int severity, const char *message, ...) const
 			FileName.GetChars(), ScriptLine, composed.GetChars());
 		return;
 	}
-	Printf (level, "%sScript %s, \"%s\" line %d:\n%s%s\n",
+	Printf (level, flags, "%sScript %s, \"%s\" line %d:\n%s%s\n",
 		color, type, FileName.GetChars(), ScriptLine, color, composed.GetChars());
 }
 

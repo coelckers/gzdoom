@@ -230,7 +230,7 @@ class BaseStatusBar : StatusBarCore native
 	virtual bool MustDrawLog(int state) { return true; }
 
 	// [MK] let the HUD handle notifications and centered print messages
-	virtual bool ProcessNotify(EPrintLevel printlevel, String outline) { return false; }
+	virtual bool ProcessNotify(EPrintLevel printlevel, String outline, EPrintFlags printflags = PRINTF_DEFAULT) { return false; }
 	virtual void FlushNotify() {}
 	virtual bool ProcessMidPrint(Font fnt, String msg, bool bold) { return false; }
 	// [MK] let the HUD handle drawing the chat prompt

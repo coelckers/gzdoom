@@ -66,9 +66,8 @@ void C_NewModeAdjust (void);
 void C_Ticker (void);
 
 void AddToConsole (int printlevel, const char *string);
-int PrintString (int printlevel, const char *string);
-int PrintStringHigh (const char *string);
-int VPrintf (int printlevel, const char *format, va_list parms) GCCFORMAT(2);
+int PrintString (int printlevel, int printflags, const char *string);
+int VPrintf (int printlevel, int printstrings, const char *format, va_list parms) GCCFORMAT(3);
 
 void C_DrawConsole ();
 void C_ToggleConsole (void);

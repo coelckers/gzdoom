@@ -2906,7 +2906,7 @@ void G_DoPlayDemo (void)
 		}
 		else
 		{
-			//Printf (PRINT_BOLD, "%s", eek);
+			//Printf (PRINTF_BOLD, "%s", eek);
 			gameaction = ga_nothing;
 		}
 	}

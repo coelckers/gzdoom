@@ -3010,7 +3010,7 @@ static bool DoDehPatch()
 	{
 		if (PatchFile[25] < '3' && (PatchFile[25] < '2' || PatchFile[27] < '3'))
 		{
-			Printf (PRINT_BOLD, "\"%s\" is an old and unsupported DeHackEd patch\n", PatchName.GetChars());
+			Printf (PRINT_DEFAULT, PRINTF_BOLD, "\"%s\" is an old and unsupported DeHackEd patch\n", PatchName.GetChars());
 			PatchName = "";
 			delete[] PatchFile;
 			return false;
@@ -3029,7 +3029,7 @@ static bool DoDehPatch()
 		}
 		if (!cont || dversion == -1 || pversion == -1)
 		{
-			Printf (PRINT_BOLD, "\"%s\" is not a DeHackEd patch file\n", PatchName.GetChars());
+			Printf (PRINT_DEFAULT, PRINTF_BOLD, "\"%s\" is not a DeHackEd patch file\n", PatchName.GetChars());
 			PatchName = "";
 			delete[] PatchFile;
 			return false;

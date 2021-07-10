@@ -77,7 +77,7 @@ void FNodeBuilder::Extract (FLevelLocals &theLevel)
 	memcpy (&outNodes[0], &Nodes[0], nodeCount*sizeof(node_t));
 	for (unsigned i = 0; i < nodeCount; ++i)
 	{
-		D(Printf(PRINT_LOG, "Node %d:  Splitter[%08x,%08x] [%08x,%08x]\n", i,
+		D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Node %d:  Splitter[%08x,%08x] [%08x,%08x]\n", i,
 			outNodes[i].x, outNodes[i].y, outNodes[i].dx, outNodes[i].dy));
 		// Go backwards because on 64-bit systems, both of the intchildren are
 		// inside the first in-game child.
@@ -85,12 +85,12 @@ void FNodeBuilder::Extract (FLevelLocals &theLevel)
 		{
 			if (outNodes[i].intchildren[j] & 0x80000000)
 			{
-				D(Printf(PRINT_LOG, "  subsector %d\n", outNodes[i].intchildren[j] & 0x7FFFFFFF));
+				D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "  subsector %d\n", outNodes[i].intchildren[j] & 0x7FFFFFFF));
 				outNodes[i].children[j] = (uint8_t *)(&outSubs[(outNodes[i].intchildren[j] & 0x7fffffff)]) + 1;
 			}
 			else
 			{
-				D(Printf(PRINT_LOG, "  node %d\n", outNodes[i].intchildren[j]));
+				D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "  node %d\n", outNodes[i].intchildren[j]));
 				outNodes[i].children[j] = &outNodes[outNodes[i].intchildren[j]];
 			}
 		}
@@ -143,7 +143,7 @@ void FNodeBuilder::Extract (FLevelLocals &theLevel)
 			const FPrivSeg *org = &Segs[SegList[i].SegNum];
 			seg_t *out = &outSegs[i];
 
-			D(Printf(PRINT_LOG, "Seg %d: v1(%d) -> v2(%d)\n", i, org->v1, org->v2));
+			D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Seg %d: v1(%d) -> v2(%d)\n", i, org->v1, org->v2));
 
 			out->v1 = &outVerts[org->v1];
 			out->v2 = &outVerts[org->v2];
@@ -186,19 +186,19 @@ void FNodeBuilder::ExtractMini (FMiniBSP *bsp)
 	memcpy(&bsp->Nodes[0], &Nodes[0], Nodes.Size()*sizeof(node_t));
 	for (i = 0; i < Nodes.Size(); ++i)
 	{
-		D(Printf(PRINT_LOG, "Node %d:\n", i));
+		D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Node %d:\n", i));
 		// Go backwards because on 64-bit systems, both of the intchildren are
 		// inside the first in-game child.
 		for (int j = 1; j >= 0; --j)
 		{
 			if (bsp->Nodes[i].intchildren[j] & 0x80000000)
 			{
-				D(Printf(PRINT_LOG, "  subsector %d\n", bsp->Nodes[i].intchildren[j] & 0x7FFFFFFF));
+				D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "  subsector %d\n", bsp->Nodes[i].intchildren[j] & 0x7FFFFFFF));
 				bsp->Nodes[i].children[j] = (uint8_t *)&bsp->Subsectors[bsp->Nodes[i].intchildren[j] & 0x7fffffff] + 1;
 			}
 			else
 			{
-				D(Printf(PRINT_LOG, "  node %d\n", bsp->Nodes[i].intchildren[j]));
+				D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "  node %d\n", bsp->Nodes[i].intchildren[j]));
 				bsp->Nodes[i].children[j] = &bsp->Nodes[bsp->Nodes[i].intchildren[j]];
 			}
 		}
@@ -235,7 +235,7 @@ void FNodeBuilder::ExtractMini (FMiniBSP *bsp)
 			const FPrivSeg *org = &Segs[SegList[i].SegNum];
 			seg_t *out = &bsp->Segs[i];
 
-			D(Printf(PRINT_LOG, "Seg %d: v1(%d) -> v2(%d)\n", i, org->v1, org->v2));
+			D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Seg %d: v1(%d) -> v2(%d)\n", i, org->v1, org->v2));
 
 			out->v1 = &bsp->Verts[org->v1];
 			out->v2 = &bsp->Verts[org->v2];
@@ -305,12 +305,12 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 	firstVert = seg->v1;
 
 #ifdef DD
-	Printf(PRINT_LOG, "--%d--\n", subsector);
+	Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "--%d--\n", subsector);
 	for (j = first; j < max; ++j)
 	{
 		seg = &Segs[SegList[j].SegNum];
 		angle_t ang = PointToAngle (Vertices[seg->v1].x - midx, Vertices[seg->v1].y - midy);
-		Printf(PRINT_LOG, "%d%c %5d(%5d,%5d)->%5d(%5d,%5d) - %3.5f  %d,%d  [%08x,%08x]-[%08x,%08x]\n", j,
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%d%c %5d(%5d,%5d)->%5d(%5d,%5d) - %3.5f  %d,%d  [%08x,%08x]-[%08x,%08x]\n", j,
 			seg->linedef == -1 ? '+' : ':',
 			seg->v1, Vertices[seg->v1].x>>16, Vertices[seg->v1].y>>16,
 			seg->v2, Vertices[seg->v2].x>>16, Vertices[seg->v2].y>>16,
@@ -325,7 +325,7 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 	{ // A well-behaved subsector. Output the segs sorted by the angle formed by connecting
 	  // the subsector's center to their first vertex.
 
-		D(Printf(PRINT_LOG, "Well behaved subsector\n"));
+		D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Well behaved subsector\n"));
 		for (i = first + 1; i < max; ++i)
 		{
 			angle_t bestdiff = ANGLE_MAX;
@@ -364,7 +364,7 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 				count++;
 			}
 #ifdef DD
-			Printf(PRINT_LOG, "+%d\n", bestj);
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "+%d\n", bestj);
 #endif
 			prevAngle -= bestdiff;
 			seg->storedseg = PushGLSeg (segs, seg, outVerts);
@@ -377,7 +377,7 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 			}
 		}
 #ifdef DD
-		Printf(PRINT_LOG, "\n");
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n");
 #endif
 	}
 	else
@@ -390,7 +390,7 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 	  //          to the start seg.
 	  // A dot product serves to determine distance from the start seg.
 
-		D(Printf(PRINT_LOG, "degenerate subsector\n"));
+		D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "degenerate subsector\n"));
 
 		// Stage 1. Go forward.
 		count += OutputDegenerateSubsector (segs, subsector, true, 0, prev, outVerts);
@@ -408,10 +408,10 @@ int FNodeBuilder::CloseSubsector (TArray<glseg_t> &segs, int subsector, vertex_t
 		count++;
 	}
 #ifdef DD
-	Printf(PRINT_LOG, "Output GL subsector %d:\n", subsector);
+	Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Output GL subsector %d:\n", subsector);
 	for (i = segs.Size() - count; i < (int)segs.Size(); ++i)
 	{
-		Printf(PRINT_LOG, "  Seg %5d%c(%5d,%5d)-(%5d,%5d)  [%08x,%08x]-[%08x,%08x]\n", i,
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "  Seg %5d%c(%5d,%5d)-(%5d,%5d)  [%08x,%08x]-[%08x,%08x]\n", i,
 			segs[i].linedef == NULL ? '+' : ' ',
 			segs[i].v1->fixX()>>16,
 			segs[i].v1->fixY()>>16,

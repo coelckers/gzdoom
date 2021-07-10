@@ -837,7 +837,7 @@ void PrintSections(FLevelLocals *Level)
 	{
 		auto &section = container.allSections[i];
 
-		Printf(PRINT_LOG, "\n\nStart of section %d sector %d, mapsection %d, bounds=(%2.3f, %2.3f, %2.3f, %2.3f)\n", i, section.sector->Index(), section.mapsection,
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n\nStart of section %d sector %d, mapsection %d, bounds=(%2.3f, %2.3f, %2.3f, %2.3f)\n", i, section.sector->Index(), section.mapsection,
 			section.bounds.left, section.bounds.top, section.bounds.right, section.bounds.bottom);
 
 		for (unsigned j = 0; j < section.segments.Size(); j++)
@@ -845,7 +845,7 @@ void PrintSections(FLevelLocals *Level)
 			auto &seg = section.segments[j];
 			if (j > 0 && seg.start != section.segments[j - 1].end)
 			{
-				Printf(PRINT_LOG, "\n");
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n");
 			}
 			FString partnerstring;
 			if (seg.partner)
@@ -859,17 +859,17 @@ void PrintSections(FLevelLocals *Level)
 			}
 			if (seg.sidedef)
 			{
-				Printf(PRINT_LOG, "segment for sidedef %d (line %d) from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "segment for sidedef %d (line %d) from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
 					seg.sidedef->Index(), seg.sidedef->linedef->Index(), seg.start->fX(), seg.start->fY(), seg.end->fX(), seg.end->fY(), partnerstring.GetChars());
 			}
 			else
 			{
-				Printf(PRINT_LOG, "segment for seg from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "segment for seg from (%2.6f, %2.6f) to (%2.6f, %2.6f)%s\n", 
 					seg.start->fX(), seg.start->fY(), seg.end->fX(), seg.end->fY(), partnerstring.GetChars());
 			}
 		}
 	}
-	Printf(PRINT_LOG, "%d sectors, %d subsectors, %d sections\n\n", Level->sectors.Size(), Level->subsectors.Size(), container.allSections.Size());
+	Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%d sectors, %d subsectors, %d sections\n\n", Level->sectors.Size(), Level->subsectors.Size(), container.allSections.Size());
 }
 
 

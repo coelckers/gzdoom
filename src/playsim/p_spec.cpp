@@ -622,7 +622,7 @@ void P_GiveSecret(FLevelLocals *Level, AActor *actor, bool printmessage, bool pl
 				C_MidPrint(nullptr, GStrings["SECRETMESSAGE"]);
 				if (showsecretsector && sectornum >= 0) 
 				{
-					Printf(PRINT_NONOTIFY, "Secret found in sector %d\n", sectornum);
+					Printf(PRINT_DEFAULT, PRINTF_NONOTIFY, "Secret found in sector %d\n", sectornum);
 				}
 			}
 			if (playsound) S_Sound (CHAN_AUTO, CHANF_UI, "misc/secret", 1, ATTN_NORM);

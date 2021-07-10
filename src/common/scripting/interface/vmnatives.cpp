@@ -995,6 +995,18 @@ DEFINE_ACTION_FUNCTION(_Console, Printf)
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION(_Console, PrintString)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(printlevel);
+	PARAM_INT(printflags);
+	PARAM_VA_POINTER(va_reginfo)
+
+	FString s = FStringFormat(VM_ARGS_NAMES, 2);
+	Printf(printlevel, printflags, "%s\n", s.GetChars());
+	return 0;
+}
+
 DEFINE_GLOBAL_NAMED(mus_playing, musplaying);
 DEFINE_FIELD_X(MusPlayingInfo, MusPlayingInfo, name);
 DEFINE_FIELD_X(MusPlayingInfo, MusPlayingInfo, baseorder);

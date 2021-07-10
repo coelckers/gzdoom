@@ -220,7 +220,7 @@ void FEventTree::PrintTree (const FEvent *event) const
 		PrintTree(event->Left);
 		sprintf(buff, " Distance %g, vertex %d, seg %u\n",
 			g_sqrt(event->Distance/4294967296.0), event->Info.Vertex, (unsigned)event->Info.FrontSeg);
-		Printf(PRINT_LOG, "%s", buff);
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%s", buff);
 		PrintTree(event->Right);
 	}
 }

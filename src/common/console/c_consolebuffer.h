@@ -64,7 +64,7 @@ class FConsoleBuffer
 	
 public:
 	FConsoleBuffer();
-	void AddText(int printlevel, const char *string);
+	void AddText(int printlevel, int printflags, const char *string);
 	void FormatText(FFont *formatfont, int displaywidth);
 	void ResizeBuffer(unsigned newsize);
 	void Clear()

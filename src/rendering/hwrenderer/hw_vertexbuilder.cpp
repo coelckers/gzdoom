@@ -273,16 +273,16 @@ static void CreateIndexedFlatVertices(FFlatVertexBuffer* fvb, TArray<sector_t>& 
 	/*
 	for (auto &vert : verts)
 	{
-		Printf(PRINT_LOG, "Sector %d\n", i);
-		Printf(PRINT_LOG, "%d vertices, %d indices\n", vert.vertices.Size(), vert.indices.Size());
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Sector %d\n", i);
+		Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%d vertices, %d indices\n", vert.vertices.Size(), vert.indices.Size());
 		int j = 0;
 		for (auto &v : vert.vertices)
 		{
-			Printf(PRINT_LOG, "    %d: (%2.3f, %2.3f)\n", j++, v.vertex->fX(), v.vertex->fY());
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "    %d: (%2.3f, %2.3f)\n", j++, v.vertex->fX(), v.vertex->fY());
 		}
 		for (unsigned i=0;i<vert.indices.Size();i+=3)
 		{
-			Printf(PRINT_LOG, "     %d, %d, %d\n", vert.indices[i], vert.indices[i + 1], vert.indices[i + 2]);
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "     %d, %d, %d\n", vert.indices[i], vert.indices[i + 1], vert.indices[i + 2]);
 		}
 
 		i++;

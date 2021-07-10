@@ -401,7 +401,7 @@ void FTextureAnimator::ParseAnim (FScanner &sc, ETextureType usetype)
 		}
 		else
 		{
-			Printf (PRINT_BOLD, "ANIMDEFS: Can't find %s\n", sc.String);
+			Printf (PRINT_DEFAULT, PRINTF_BOLD, "ANIMDEFS: Can't find %s\n", sc.String);
 		}
 	}
 

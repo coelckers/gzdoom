@@ -192,30 +192,30 @@ CCMD(dumpportals)
 			auto p = Level->portalGroups[i];
 			double xdisp = p->mDisplacement.X;
 			double ydisp = p->mDisplacement.Y;
-			Printf(PRINT_LOG, "Portal #%d, %s, displacement = (%f,%f)\n", i, p->plane == 0 ? "floor" : "ceiling",
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Portal #%d, %s, displacement = (%f,%f)\n", i, p->plane == 0 ? "floor" : "ceiling",
 				   xdisp, ydisp);
-			Printf(PRINT_LOG, "Coverage:\n");
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Coverage:\n");
 			for (auto &sub : Level->subsectors)
 			{
 				auto port = sub.render_sector->GetPortalGroup(p->plane);
 				if (port == p)
 				{
-					Printf(PRINT_LOG, "\tSubsector %d (%d):\n\t\t", sub.Index(), sub.render_sector->sectornum);
+					Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\tSubsector %d (%d):\n\t\t", sub.Index(), sub.render_sector->sectornum);
 					for (unsigned k = 0; k < sub.numlines; k++)
 					{
-						Printf(PRINT_LOG, "(%.3f,%.3f), ", sub.firstline[k].v1->fX() + xdisp, sub.firstline[k].v1->fY() + ydisp);
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "(%.3f,%.3f), ", sub.firstline[k].v1->fX() + xdisp, sub.firstline[k].v1->fY() + ydisp);
 					}
-					Printf(PRINT_LOG, "\n\t\tCovered by subsectors:\n");
+					Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n\t\tCovered by subsectors:\n");
 					FPortalCoverage *cov = &sub.portalcoverage[p->plane];
 					for (int l = 0; l < cov->sscount; l++)
 					{
 						subsector_t *csub = &Level->subsectors[cov->subsectors[l]];
-						Printf(PRINT_LOG, "\t\t\t%5d (%4d): ", cov->subsectors[l], csub->render_sector->sectornum);
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\t\t\t%5d (%4d): ", cov->subsectors[l], csub->render_sector->sectornum);
 						for (unsigned m = 0; m < csub->numlines; m++)
 						{
-							Printf(PRINT_LOG, "(%.3f,%.3f), ", csub->firstline[m].v1->fX(), csub->firstline[m].v1->fY());
+							Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "(%.3f,%.3f), ", csub->firstline[m].v1->fX(), csub->firstline[m].v1->fY());
 						}
-						Printf(PRINT_LOG, "\n");
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n");
 					}
 				}
 			}

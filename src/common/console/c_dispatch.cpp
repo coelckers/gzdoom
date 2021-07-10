@@ -769,7 +769,7 @@ void C_SetAlias (const char *name, const char *cmd)
 	{
 		if (!alias->IsAlias ())
 		{
-			//Printf (PRINT_BOLD, "%s is a command and cannot be an alias.\n", name);
+			//Printf (PRINT_DEFAULT, PRINTF_BOLD, "%s is a command and cannot be an alias.\n", name);
 			return;
 		}
 		delete alias;

@@ -49,20 +49,26 @@ extern "C" int myvsnprintf(char* buffer, size_t count, const char* format, va_li
 #define TEXTCOLOR_CHAT			"\034*"
 #define TEXTCOLOR_TEAMCHAT		"\034!"
 
-// game print flags
+// Game print levels
 enum
 {
-	PRINT_LOW,		// pickup messages
-	PRINT_MEDIUM,	// death messages
-	PRINT_HIGH,		// critical messages
-	PRINT_CHAT,		// chat messages
-	PRINT_TEAMCHAT,	// chat messages from a teammate
-	PRINT_LOG,		// only to logfile
-	PRINT_BOLD = 200,				// What Printf_Bold used
-	PRINT_TYPES = 1023,		// Bitmask.
-	PRINT_NONOTIFY = 1024,	// Flag - do not add to notify buffer
-	PRINT_NOLOG = 2048,		// Flag - do not print to log file
-	PRINT_NOTIFY = 4096,	// Flag - add to game-native notify display - messages without this only go to the generic notification buffer.
+	PRINT_DEFAULT,		// Default to PRINT_LOW
+	PRINT_LOW = 0,		// pickup messages
+	PRINT_MEDIUM,		// death messages
+	PRINT_HIGH,			// critical messages
+	PRINT_CHAT,			// chat messages
+	PRINT_TEAMCHAT,		// chat messages from a teammate
+};
+
+// Print flags
+enum
+{
+	PRINTF_DEFAULT,
+	PRINTF_BOLD = 200,		// What Printf_Bold used
+	PRINTF_LOGONLY = 512,	// Flag - Only print to logfile// Flag - Only print to logfile
+	PRINTF_NONOTIFY = 1024,	// Flag - do not add to notify buffer
+	PRINTF_NOLOG = 2048,	// Flag - do not print to log file
+	PRINTF_NOTIFY = 4096,	// Flag - add to game-native notify display - messages without this only go to the generic notification buffer.
 };
 
 enum
@@ -81,9 +87,11 @@ void I_FatalError(const char* fmt, ...) ATTRIBUTE((format(printf, 1, 2)));
 // This really could need some cleanup - the main problem is that it'd create
 // lots of potential for merge conflicts.
 
-int PrintString (int iprintlevel, const char *outline);
+int PrintString (int printlevel, int printflags, const char *outline);
 int VPrintf(int printlevel, const char* format, va_list parms);
+int VPrintf(int printlevel, int printflags, const char* format, va_list parms);
 int Printf (int printlevel, const char *format, ...) ATTRIBUTE((format(printf,2,3)));
+int Printf (int printlevel, int printflags, const char* format, ...) ATTRIBUTE((format(printf, 3, 4)));
 int Printf (const char *format, ...) ATTRIBUTE((format(printf,1,2)));
 int DPrintf (int level, const char *format, ...) ATTRIBUTE((format(printf,2,3)));
 

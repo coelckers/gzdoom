@@ -83,7 +83,7 @@ double FNodeBuilder::AddIntersection (const node_t &node, int vertex)
 // seg information will be messed up in the generated tree.
 void FNodeBuilder::FixSplitSharers (const node_t &node)
 {
-	D(Printf(PRINT_LOG, "events:\n"));
+	D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "events:\n"));
 	D(Events.PrintTree());
 	for (unsigned int i = 0; i < SplitSharers.Size(); ++i)
 	{
@@ -107,7 +107,7 @@ void FNodeBuilder::FixSplitSharers (const node_t &node)
 			Vertices[Segs[seg].v2].x>>16,
 			Vertices[Segs[seg].v2].y>>16,
 			SplitSharers[i].Distance, event->Distance));
-		D(Printf(PRINT_LOG, "%s", buff));
+		D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "%s", buff));
 
 		if (SplitSharers[i].Forward)
 		{
@@ -130,7 +130,7 @@ void FNodeBuilder::FixSplitSharers (const node_t &node)
 
 		while (event != NULL && next != NULL && event->Info.Vertex != v2)
 		{
-			D(Printf(PRINT_LOG, "Forced split of seg %d(%d->%d) at %d(%d,%d)\n", seg,
+			D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Forced split of seg %d(%d->%d) at %d(%d,%d)\n", seg,
 				Segs[seg].v1, Segs[seg].v2,
 				event->Info.Vertex,
 				Vertices[event->Info.Vertex].x>>16,
@@ -222,7 +222,7 @@ void FNodeBuilder::AddMinisegs (const node_t &node, uint32_t splitseg, uint32_t 
 						);
 				}
 
-				D(Printf (PRINT_LOG, "**Minisegs** %d/%d added %d(%d,%d)->%d(%d,%d)\n", fnseg, bnseg,
+				D(Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "**Minisegs** %d/%d added %d(%d,%d)->%d(%d,%d)\n", fnseg, bnseg,
 					prev->Info.Vertex,
 					Vertices[prev->Info.Vertex].x>>16, Vertices[prev->Info.Vertex].y>>16,
 					event->Info.Vertex,

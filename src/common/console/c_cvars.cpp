@@ -1557,7 +1557,7 @@ CCMD (toggle)
 			auto msg = var->GetToggleMessage(val.Bool);
 			if (msg.IsNotEmpty())
 			{
-				Printf(PRINT_NOTIFY, "%s\n", msg.GetChars());
+				Printf(PRINT_DEFAULT, PRINTF_NOTIFY, "%s\n", msg.GetChars());
 			}
 			else Printf ("\"%s\" = \"%s\"\n", var->GetName(),
 				val.Bool ? "true" : "false");

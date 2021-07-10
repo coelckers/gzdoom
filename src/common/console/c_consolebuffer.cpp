@@ -69,7 +69,7 @@ FConsoleBuffer::FConsoleBuffer()
 //
 //==========================================================================
 
-void FConsoleBuffer::AddText(int printlevel, const char *text)
+void FConsoleBuffer::AddText(int printlevel, int printflags, const char *text)
 {
 	FString build = TEXTCOLOR_TAN;
 	
@@ -86,9 +86,9 @@ void FConsoleBuffer::AddText(int printlevel, const char *text)
 		mLastLineNeedsUpdate = true;
 	}
 	
-	if (printlevel >= 0 && printlevel != PRINT_HIGH)
+	if (printflags > 0 || (printlevel >= 0 && printlevel != PRINT_HIGH))
 	{
-		if (printlevel == 200) build = TEXTCOLOR_GREEN;
+		if (printflags & PRINTF_BOLD) build = TEXTCOLOR_GREEN;
 		else if (printlevel < PRINTLEVELS) build.Format("%c%c", TEXTCOLOR_ESCAPE, PrintColors[printlevel]+'A');
 	}
 	

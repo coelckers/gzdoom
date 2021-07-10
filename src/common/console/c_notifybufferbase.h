@@ -16,7 +16,7 @@ class FNotifyBufferBase
 {
 public:
 	virtual ~FNotifyBufferBase() = default;
-	virtual void AddString(int printlevel, FString source) = 0;
+	virtual void AddString(int printlevel, int printflags, FString source) = 0;
 	virtual void Shift(int maxlines);
 	virtual void Clear();
 	virtual void Tick();

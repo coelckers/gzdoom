@@ -643,37 +643,37 @@ CCMD(dumpgeometry)
 		Printf("Geometry for %s\n", Level->MapName.GetChars());
 		for (auto &sector : Level->sectors)
 		{
-			Printf(PRINT_LOG, "Sector %d\n", sector.sectornum);
+			Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "Sector %d\n", sector.sectornum);
 			for (int j = 0; j<sector.subsectorcount; j++)
 			{
 				subsector_t * sub = sector.subsectors[j];
 				
-				Printf(PRINT_LOG, "    Subsector %d - real sector = %d - %s\n", int(sub->Index()), sub->sector->sectornum, sub->hacked & 1 ? "hacked" : "");
+				Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "    Subsector %d - real sector = %d - %s\n", int(sub->Index()), sub->sector->sectornum, sub->hacked & 1 ? "hacked" : "");
 				for (uint32_t k = 0; k<sub->numlines; k++)
 				{
 					seg_t * seg = sub->firstline + k;
 					if (seg->linedef)
 					{
-						Printf(PRINT_LOG, "      (%4.4f, %4.4f), (%4.4f, %4.4f) - seg %d, linedef %d, side %d",
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "      (%4.4f, %4.4f), (%4.4f, %4.4f) - seg %d, linedef %d, side %d",
 							seg->v1->fX(), seg->v1->fY(), seg->v2->fX(), seg->v2->fY(),
 							seg->Index(), seg->linedef->Index(), seg->sidedef != seg->linedef->sidedef[0]);
 					}
 					else
 					{
-						Printf(PRINT_LOG, "      (%4.4f, %4.4f), (%4.4f, %4.4f) - seg %d, miniseg",
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "      (%4.4f, %4.4f), (%4.4f, %4.4f) - seg %d, miniseg",
 							seg->v1->fX(), seg->v1->fY(), seg->v2->fX(), seg->v2->fY(), seg->Index());
 					}
 					if (seg->PartnerSeg)
 					{
 						subsector_t * sub2 = seg->PartnerSeg->Subsector;
-						Printf(PRINT_LOG, ", back sector = %d, real back sector = %d", sub2->render_sector->sectornum, seg->PartnerSeg->frontsector->sectornum);
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, ", back sector = %d, real back sector = %d", sub2->render_sector->sectornum, seg->PartnerSeg->frontsector->sectornum);
 					}
 					else if (seg->backsector)
 					{
-						Printf(PRINT_LOG, ", back sector = %d (no partnerseg)", seg->backsector->sectornum);
+						Printf(PRINT_DEFAULT, PRINTF_LOGONLY, ", back sector = %d (no partnerseg)", seg->backsector->sectornum);
 					}
 					
-					Printf(PRINT_LOG, "\n");
+					Printf(PRINT_DEFAULT, PRINTF_LOGONLY, "\n");
 				}
 			}
 		}
