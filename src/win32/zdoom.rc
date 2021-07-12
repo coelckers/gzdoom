@@ -9,7 +9,7 @@
 //
 #include "afxres.h"
 #include "../version.h"
-#include "../gitinfo.h"
+#include "gitinfo.h"
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -35,7 +35,7 @@ END
 BEGIN
     "#include ""afxres.h""\r\n"
     "#include ""../version.h""\r\r\n"
-    "#include ""../gitinfo.h""\r\0"
+    "#include ""gitinfo.h""\r\0"
 END
 
 3 TEXTINCLUDE 

@@ -1,7 +1,6 @@
 cmake_minimum_required( VERSION 3.1.0 )
 
 make_release_only()
-use_fast_math()
 
 if(WIN32)
     add_subdirectory(OSDependent/Windows)
@@ -124,7 +123,9 @@ add_library(glslang STATIC ${LIB_TYPE} ${BISON_GLSLParser_OUTPUT_SOURCE} ${SOURC
 set_property(TARGET glslang PROPERTY FOLDER glslang)
 set_property(TARGET glslang PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(glslang OGLCompiler OSDependent)
-target_include_directories(glslang PUBLIC ..)
+target_include_directories(glslang PUBLIC Public)
+
+use_fast_math(glslang)
 
 if(WIN32 AND BUILD_SHARED_LIBS)
     set_target_properties(glslang PROPERTIES PREFIX "")

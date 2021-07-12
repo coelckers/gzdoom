@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.1.0 )
+cmake_minimum_required(VERSION 3.1...3.20)
 
 #make_release_only()
 
@@ -18,8 +18,6 @@ if(APPLE)
 	# Suppress stdlib.h:334:6: warning: pointer is missing a nullability type specifier (_Nonnull, _Nullable, or _Null_unspecified)
 	add_definitions(-Wno-nullability-completeness)
 endif()
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(ASMJIT_PUBLIC_HDRS
     asmjit/arm.h
@@ -100,6 +98,8 @@ set(ASMJIT_SRCS
 add_library(${ASMJITNAME} STATIC ${ASMJIT_SRCS} ${ASMJIT_PUBLIC_HDRS})
 
 set_target_properties(${ASMJITNAME} PROPERTIES OUTPUT_NAME asmjit)
+
+target_include_directories(${ASMJITNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL )
     install(TARGETS ${ASMJITNAME}

@@ -1,10 +1,8 @@
-cmake_minimum_required( VERSION 3.1.0 )
+cmake_minimum_required(VERSION 3.1...3.20)
 
 make_release_only()
 
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_7ZIP_PPMD_SUPPPORT" )
-
-set( LZMA_FILES
+add_library(lzma STATIC
 	C/7zArcIn.c
 	C/7zBuf.c
 	C/7zCrc.c
@@ -22,13 +20,15 @@ set( LZMA_FILES
 	C/LzmaDec.c
 	C/LzmaEnc.c
 	C/Ppmd7.c
-	C/Ppmd7Dec.c )
+	C/Ppmd7Dec.c
+)
 
-if( WIN32 )
-	set( LZMA_FILES ${LZMA_FILES} C/LzFindMt.c C/Threads.c )
+if(WIN32)
+	target_sources(lzma PRIVATE C/LzFindMt.c C/Threads.c)
 else()
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_7ZIP_ST" )
+	target_compile_definitions(lzma PRIVATE _7ZIP_ST)
 endif()
 
-add_library( lzma STATIC ${LZMA_FILES} )
-target_link_libraries( lzma )
+target_compile_definitions(lzma PRIVATE _7ZIP_PPMD_SUPPPORT)
+
+target_include_directories(lzma PUBLIC C)

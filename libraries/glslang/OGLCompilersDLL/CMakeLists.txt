@@ -1,7 +1,6 @@
 cmake_minimum_required( VERSION 3.1.0 )
 
 make_release_only()
-use_fast_math()
 
 # Request C++11
 if(${CMAKE_VERSION} VERSION_LESS 3.1)
@@ -19,6 +18,8 @@ set(SOURCES InitializeDll.cpp InitializeDll.h)
 add_library(OGLCompiler STATIC ${SOURCES})
 set_property(TARGET OGLCompiler PROPERTY FOLDER glslang)
 set_property(TARGET OGLCompiler PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+use_fast_math(OGLCompiler)
 
 if(WIN32)
     source_group("Source" FILES ${SOURCES})

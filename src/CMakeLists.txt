@@ -1,109 +1,110 @@
-cmake_minimum_required( VERSION 3.1.0 )
-
 include(precompiled_headers)
 
-if( COMMAND cmake_policy )
-	cmake_policy( SET CMP0003 NEW )
-endif()
+include(CheckCXXSourceCompiles)
+include(CheckFunctionExists)
+include(CheckCXXCompilerFlag)
+include(CheckLibraryExists)
+include(FindPkgConfig)
 
-include( CheckCXXSourceCompiles )
-include( CheckFunctionExists )
-include( CheckCXXCompilerFlag )
-include( CheckIncludeFile )
-include( CheckIncludeFiles )
-include( CheckLibraryExists )
-include( FindPkgConfig )
+# BEGIN: Generated sources
 
-if( MSVC )
-	find_package( ZMusic )
+add_custom_target(revision_check ALL
+	COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/tools/updaterevision/UpdateRevision.cmake" ${CMAKE_CURRENT_BINARY_DIR}/gitinfo.h
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h
+	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} gamedata/xlat/xlat_parser.y
+	DEPENDS gamedata/xlat/xlat_parser.y
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h
+	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} common/scripting/frontend/zcc-parse.lemon
+	DEPENDS common/scripting/frontend/zcc-parse.lemon
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
+	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h common/engine/sc_man_scanner.re
+	DEPENDS common/engine/sc_man_scanner.re
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# END
+# BEGIN: Basic target setup
+
+add_executable(zdoom WIN32 MACOSX_BUNDLE)
+
+set_target_properties(zdoom PROPERTIES
+	MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist"
+	XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
+)
+
+if(NOT ZDOOM_OUTPUT_OLDSTYLE)
+	set_target_properties(zdoom PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR}
+		OUTPUT_NAME ${ZDOOM_EXE_NAME}
+	)
 else()
-	find_package( ZMusic REQUIRED )
+	set_target_properties(zdoom PROPERTIES
+		RUNTIME_OUTPUT_NAME ${ZDOOM_EXE_NAME}
+		RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ZDOOM_OUTPUT_DIR}
+		RUNTIME_OUTPUT_NAME_DEBUG ${ZDOOM_EXE_NAME}d
+		RUNTIME_OUTPUT_DIRECTORY_DEBUG ${ZDOOM_OUTPUT_DIR}
+		RUNTIME_OUTPUT_NAME_MINSIZEREL ${ZDOOM_EXE_NAME}msr
+		RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${ZDOOM_OUTPUT_DIR}
+		RUNTIME_OUTPUT_NAME_RELWITHDEBINFO ${ZDOOM_EXE_NAME}rd
+		RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${ZDOOM_OUTPUT_DIR}
+	)
 endif()
 
-message("Building for target architecture: ${ZDOOM_TARGET_ARCH}")
+option(SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON)
 
-if( MSVC AND NOT ZMUSIC_FOUND )
-	# Use prebuilt library
-	set( ZMUSIC_ROOT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../bin/windows/zmusic" )
-	set( ZMUSIC_INCLUDE_DIR ${ZMUSIC_ROOT_PATH}/include )
-	set( ZMUSIC_LIBRARIES zmusic )
-	if( ${ZDOOM_TARGET_ARCH} MATCHES "x86_64" )
-		link_directories( ${ZMUSIC_ROOT_PATH}/64bit )
-	elseif( ${ZDOOM_TARGET_ARCH} MATCHES "arm" )
-		link_directories( ${ZMUSIC_ROOT_PATH}/arm64 )
+if(NOT SEND_ANON_STATS)
+	target_compile_definitions(zdoom PRIVATE NO_SEND_STATS)
+endif()
+
+# END
+# BEGIN: Operating system setup
+
+message(STATUS "Building for target architecture: ${ZDOOM_TARGET_ARCH}")
+
+if(ZDOOM_TARGET_ARCH MATCHES "x86_64")
+	set(X64 64)
+endif()
+
+if(X64 OR ZDOOM_TARGET_ARCH MATCHES "i386")
+	target_compile_definitions(zdoom PRIVATE ARCH_IA32)
+endif()
+
+if(WIN32)
+	if(MSVC)
+		target_link_libraries(zdoom PRIVATE DelayImp)
 	else()
-		link_directories( ${ZMUSIC_ROOT_PATH}/32bit )
-	endif()
-	set( ZMUSIC_FOUND TRUE )
-endif()
-
-if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-	option( NO_STRIP "Do not strip Release or MinSizeRel builds" )
-	# At least some versions of Xcode fail if you strip with the linker
-	# instead of the separate strip utility.
-	if( APPLE )
-		set( NO_STRIP ON )
-	endif()
-endif()
-
-if( APPLE )
-    option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
-endif()
-
-if( ${ZDOOM_TARGET_ARCH} MATCHES "x86_64" )
-	set( X64 64 )
-endif()
-
-if( X64 OR ${ZDOOM_TARGET_ARCH} MATCHES "i386" )
-	add_definitions( -DARCH_IA32 )
-endif()
-
-if( NOT ZDOOM_LIBS )
-	set( ZDOOM_LIBS "" )
-endif()
-
-if( WIN32 )
-	if( X64 )
-		set( WIN_TYPE Win64 )
-		set( XBITS x64 )
-	else()
-		set( WIN_TYPE Win32 )
-		set( XBITS x86 )
-	endif()
-
-	add_definitions( -D_WIN32 )
-
-
-	if( MSVC )	# For VS 2017 and later.
-		# for modern Windows SDKs the DirectX headers should be available by default.
-		set( DX_dinput8_LIBRARY dinput8 )
-	else()
-
-		find_library( DX_dinput8_LIBRARY dinput8
-			PATHS ENV DXSDK_DIR
-			PATH_SUFFIXES Lib Lib/${XBITS} )
-		find_library( DX_dxguid_LIBRARY dxguid
-			PATHS ENV DXSDK_DIR
-			PATH_SUFFIXES Lib Lib/${XBITS} )
-
-		# Modern versions of the Windows SDK include dinput8.lib. Unfortunately,
-		# CMake cannot find these libraries via find_library.
-		if( NOT DX_dinput8_LIBRARY )
-			# If we got this far, assume dinput8.lib is in the system library path.
-			set( DX_dinput8_LIBRARY dinput8 )
+		if(X64)
+			set(XBITS x64)
+		else()
+			set(XBITS x86)
 		endif()
+
+		find_library(DX_dxguid_LIBRARY dxguid
+			PATHS ENV DXSDK_DIR
+			PATH_SUFFIXES Lib Lib/${XBITS}
+		)
 
 		# Modern versions of the Windows SDK do NOT include dxguid.lib. Its contents
 		# were moved to dinput8.lib.
-		if( NOT DX_dxguid_LIBRARY )
-			message( STATUS "Could not find dxguid.lib. Build may fail on old Windows SDKs.")
+		if(DX_dxguid_LIBRARY)
+			target_link_libraries(zdoom PRIVATE "${DX_dxguid_LIBRARY}")
 		endif()
+
+		target_link_libraries(zdoom PRIVATE d3d9)
 	endif()
 
-	set( ZDOOM_LIBS
+	target_link_libraries(zdoom PRIVATE
 		wsock32
 		winmm
-		"${DX_dinput8_LIBRARY}"
 		ole32
 		user32
 		gdi32
@@ -112,459 +113,348 @@ if( WIN32 )
 		ws2_32
 		setupapi
 		oleaut32
-		dbghelp )
+		dbghelp
+		dinput8
+	)
 
-	if( NOT ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		set( ZDOOM_LIBS ${ZDOOM_LIBS} DelayImp )
-	endif()
-
-	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		if( DX_dxguid_LIBRARY )
-			list( APPEND ZDOOM_LIBS "${DX_dxguid_LIBRARY}" )
-		endif()
-		list( APPEND ZDOOM_LIBS d3d9 )
-	endif()
+	target_compile_definitions(zdoom PRIVATE _UNICODE UNICODE _WIN32_WINNT=0x0600)
 else()
-	if( APPLE )
-		set( NO_GTK ON )
-		set( DYN_GTK OFF )
+	if(APPLE)
+		set(NO_GTK ON)
+		set(DYN_GTK OFF)
+
+		option(OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON)
 
 		# Prevent inclusion of fp.h and FixMath.h from Carbon framework
 		# Declarations from these files are not used but cause the following conflicts:
 		#  - redefinition of 'FixedToFloat' and 'FloatToFixed' macros
 		#  - redefinition of 'pi' as different kind of symbol
-		add_definitions( -D__FP__ -D__FIXMATH__ )
+		target_compile_definitions(zdoom PRIVATE __FP__ __FIXMATH__)
+
+		target_link_libraries(zdoom PRIVATE "-framework Cocoa" "-framework IOKit" "-framework OpenGL")
+
+		if(HAVE_VULKAN)
+			target_link_libraries(zdoom PRIVATE "-framework QuartzCore")
+		endif()
+
+		# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
+		# if placed in the directory with the main executable
+		set_target_properties(zdoom PROPERTIES
+			BUILD_WITH_INSTALL_RPATH ON
+			INSTALL_RPATH "@executable_path"
+		)
 	else()
-		option( NO_GTK "Disable GTK+ dialogs (Not applicable to Windows)" )
-		option( DYN_GTK "Load GTK+ at runtime instead of compile time" ON )
+		option(NO_GTK "Disable GTK+ dialogs (Not applicable to Windows)" OFF)
+		option(DYN_GTK "Load GTK+ at runtime instead of compile time" ON)
 
 		# Use GTK+ for the IWAD picker, if available.
-		if( NOT NO_GTK )
-			pkg_check_modules( GTK3 gtk+-3.0 )
-			if( GTK3_FOUND )
-				if( NOT DYN_GTK )
-					set( ZDOOM_LIBS ${ZDOOM_LIBS} ${GTK3_LIBRARIES} )
-				endif()
-				include_directories( ${GTK3_INCLUDE_DIRS} )
-				link_directories( ${GTK3_LIBRARY_DIRS} )
-			else()
-				pkg_check_modules( GTK2 gtk+-2.0 )
-				if( GTK2_FOUND )
-					if( NOT DYN_GTK )
-						set( ZDOOM_LIBS ${ZDOOM_LIBS} ${GTK2_LIBRARIES} )
-					endif()
-					include_directories( ${GTK2_INCLUDE_DIRS} )
-					link_directories( ${GTK2_LIBRARY_DIRS} )
+		if(NOT NO_GTK)
+			pkg_check_modules(GTK3 IMPORTED_TARGET gtk+-3.0)
+			if(GTK3_FOUND)
+				if(NOT DYN_GTK)
+					target_link_libraries(zdoom PRIVATE PkgConfig::GTK3)
 				else()
-					set( NO_GTK ON )
+					target_include_directories(zdoom PRIVATE ${GTK3_INCLUDE_DIRS})
+				endif()
+			else()
+				pkg_check_modules(GTK2 IMPORTED_TARGET gtk+-2.0)
+				if(GTK2_FOUND)
+					if(NOT DYN_GTK)
+						target_link_libraries(zdoom PRIVATE PkgConfig::GTK2)
+					else()
+						target_include_directories(zdoom PRIVATE ${GTK2_INCLUDE_DIRS})
+					endif()
+				else()
+					set(NO_GTK ON)
 				endif()
 			endif()
 		endif()
 	endif()
 
-	option( NO_SDL_JOYSTICK "Disable SDL joystick support (Not applicable to Windows)" OFF )
-	if ( NO_SDL_JOYSTICK )
-		add_definitions( -DNO_SDL_JOYSTICK=1 )
-	endif ( NO_SDL_JOYSTICK )
-
-	if( NO_GTK )
-		add_definitions( -DNO_GTK )
-	elseif( DYN_GTK )
-		add_definitions( -DDYN_GTK=1 )
+	if(NO_GTK)
+		target_compile_definitions(zdoom PRIVATE NO_GTK)
+	elseif(DYN_GTK)
+		target_compile_definitions(zdoom PRIVATE DYN_GTK=1)
 	else()
-		add_definitions( -DDYN_GTK=0 )
+		target_compile_definitions(zdoom PRIVATE DYN_GTK=0)
+	endif()
+
+	option(NO_SDL_JOYSTICK "Disable SDL joystick support" OFF)
+	if(NO_SDL_JOYSTICK)
+		target_compile_definitions(zdoom PRIVATE NO_SDL_JOYSTICK=1)
 	endif()
 
 	# Non-Windows version also needs SDL except native OS X backend
-	if( NOT APPLE OR NOT OSX_COCOA_BACKEND )
-		find_package( SDL2 REQUIRED )
-		include_directories( "${SDL2_INCLUDE_DIR}" )
-		set( ZDOOM_LIBS ${ZDOOM_LIBS} "${SDL2_LIBRARY}" )
+	if(NOT APPLE OR NOT OSX_COCOA_BACKEND)
+		find_package(SDL2 REQUIRED)
+		target_include_directories(zdoom PRIVATE "${SDL2_INCLUDE_DIR}")
+		target_link_libraries(zdoom PRIVATE "${SDL2_LIBRARY}")
 	endif()
 
-	find_path( FPU_CONTROL_DIR fpu_control.h )
-	if( FPU_CONTROL_DIR )
-		include_directories( ${FPU_CONTROL_DIR} )
-		add_definitions( -DHAVE_FPU_CONTROL )
+	find_path(FPU_CONTROL_DIR fpu_control.h)
+	if(FPU_CONTROL_DIR)
+		target_include_directories(zdoom PRIVATE ${FPU_CONTROL_DIR})
+		target_compile_definitions(zdoom PRIVATE HAVE_FPU_CONTROL)
+	endif()
+
+	find_package(Backtrace)
+	if(Backtrace_FOUND)
+		target_link_libraries(zdoom PRIVATE ${Backtrace_LIBRARIES})
+		target_include_directories(zdoom PRIVATE ${Backtrace_INCLUDE_DIRS})
+	endif()
+
+	if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+		# [BL] Solaris requires these to be explicitly linked.
+		target_link_libraries(zdoom PRIVATE nsl socket)
 	endif()
 endif()
 
-if( NOT NO_OPENAL )
-	if ( NOT DYN_OPENAL )	# DYN_OPENAL uses local copies of the headers.
-		find_package( OpenAL )
-		mark_as_advanced(CLEAR OPENAL_INCLUDE_DIR)
-		if( OPENAL_INCLUDE_DIR )
-			include_directories( ${OPENAL_INCLUDE_DIR} )
-			mark_as_advanced(CLEAR OPENAL_LIBRARY)
-			if( OPENAL_LIBRARY )
-				set( ZDOOM_LIBS ${OPENAL_LIBRARY} ${ZDOOM_LIBS} )
-			else()
-				set( NO_OPENAL ON )
-			endif()
-		else()
-			set( NO_OPENAL ON )
+option(DYN_OPENAL "Dynamically load OpenAL" ON)
+option(NO_OPENAL "Disable OpenAL sound support" OFF)
+if(NOT NO_OPENAL)
+	add_library(OpenAL INTERFACE)
+	target_link_libraries(zdoom PRIVATE OpenAL)
+	if(NOT DYN_OPENAL) # DYN_OPENAL uses local copies of the headers.
+		find_package(OpenAL REQUIRED)
+		mark_as_advanced(CLEAR OPENAL_INCLUDE_DIR OPENAL_LIBRARY)
+		if(OPENAL_INCLUDE_DIR AND OPENAL_LIBRARY)
+			target_include_directories(OpenAL INTERFACE ${OPENAL_INCLUDE_DIR})
+			target_link_libraries(OpenAL INTERFACE ${OPENAL_LIBRARY})
 		endif()
 	else()
-		add_definitions( -DDYN_OPENAL )
+		target_compile_definitions(OpenAL INTERFACE DYN_OPENAL)
+	endif()
+else()
+	target_compile_definitions(zdoom PRIVATE NO_OPENAL=1)
+endif()
+
+if(TARGET musl-fts)
+	target_link_libraries(zdoom PRIVATE musl-fts)
+endif()
+
+# END
+# BEGIN: Compiler setup
+
+if(MSVC AND ZDOOM_TARGET_ARCH MATCHES "arm")
+	target_compile_definitions(zdoom PRIVATE __ARM__ RAPIDJSON_ENDIAN=RAPIDJSON_LITTLEENDIAN)
+endif()
+
+# Instruction set extensions
+if(X64)
+	set(HAVE_MMX ON)
+	set(HAVE_SSE2 ON)
+elseif(ZDOOM_TARGET_ARCH MATCHES "i386")
+	if(COMPILER_IS_GNUCXX_COMPATIBLE)
+		set(MMX_ENABLE "-mmx")
+		set(CMAKE_REQUIRED_FLAGS "${MMX_ENABLE}")
+	endif()
+
+	check_cxx_source_compiles(
+		"#include <mmintrin.h>
+		int main(void) { __m64 v = _m_from_int(0); }"
+		HAVE_MMX
+	)
+
+	set(CMAKE_REQUIRED_FLAGS "")
+
+	check_cxx_compiler_flag("-msse2" HAVE_SSE2)
+	if(HAVE_SSE2)
+		set(SSE2_ENABLE "-msse2")
 	endif()
 endif()
 
-if( NO_OPENAL )
-	add_definitions( -DNO_OPENAL=1 )
+if(NOT HAVE_SSE2)
+	target_compile_definitions(zdoom PRIVATE NO_SSE)
 endif()
 
-# Decide on SSE setup
-
-# SSE only matters on 32-bit targets. We check compiler flags to know if we can do it.
-if( CMAKE_SIZEOF_VOID_P MATCHES "4" AND NOT CMAKE_OSX_ARCHITECTURES MATCHES ppc )
-		CHECK_CXX_COMPILER_FLAG( "-msse2 -mfpmath=sse" CAN_DO_MFPMATH )
-		CHECK_CXX_COMPILER_FLAG( -arch:SSE2 CAN_DO_ARCHSSE2 )
-		if( CAN_DO_MFPMATH )
-			set( SSE1_ENABLE "-msse -mfpmath=sse" )
-			set( SSE2_ENABLE "-msse2 -mfpmath=sse" )
-		elseif( CAN_DO_ARCHSSE2 )
-			set( SSE1_ENABLE -arch:SSE )
-			set( SSE2_ENABLE -arch:SSE2 )
-		endif()
-endif()
-
-if( X64 )
-	set( HAVE_MMX 1 )
-else( X64 )
-	set( SAFE_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-
-	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmmx")
-	endif( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-
-	CHECK_CXX_SOURCE_COMPILES("#include <mmintrin.h>
-		int main(void) { __m64 v = _m_from_int(0); }"
-		HAVE_MMX)
-
-	set( CMAKE_CXX_FLAGS ${SAFE_CMAKE_CXX_FLAGS} )
-endif( X64 )
-
-CHECK_CXX_SOURCE_COMPILES("#include <ppl.h>
+check_cxx_source_compiles(
+	"#include <ppl.h>
 	int main() { concurrency::parallel_for(0, 1, 1, [](int) { } ); }"
-	HAVE_PARALLEL_FOR)
+	HAVE_PARALLEL_FOR
+)
 
-if( NOT HAVE_PARALLEL_FOR )
-	CHECK_CXX_SOURCE_COMPILES("#include <dispatch/dispatch.h>
+if(NOT HAVE_PARALLEL_FOR)
+	check_cxx_source_compiles(
+		"#include <dispatch/dispatch.h>
 		int main() { dispatch_apply(1, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(size_t) { }); }"
-		HAVE_DISPATCH_APPLY)
+		HAVE_DISPATCH_APPLY
+	)
+endif()
+
+if(HAVE_PARALLEL_FOR)
+	target_compile_definitions(zdoom PRIVATE HAVE_PARALLEL_FOR=1)
+elseif(HAVE_DISPATCH_APPLY)
+	target_compile_definitions(zdoom PRIVATE HAVE_DISPATCH_APPLY=1)
+else()
+	option(NO_OPENMP "Disable usage of OpenMP" OFF)
+
+	if(NOT NO_OPENMP)
+		find_package(OpenMP)
+		if(OPENMP_FOUND)
+			target_link_libraries(zdoom PRIVATE OpenMP::OpenMP_CXX)
+		endif()
+	endif()
 endif()
 
 # Set up flags for MSVC
-if (MSVC)
-	set( CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}" )
-endif (MSVC)
+if(MSVC)
+	target_compile_options(zdoom PRIVATE "/MP")
+
+	target_link_options(zdoom PRIVATE "/MANIFEST:NO")
+
+	option(ZDOOM_GENERATE_MAPFILE "Generate .map file for debugging." OFF)
+	if(ZDOOM_GENERATE_MAPFILE)
+		target_link_options(zdoom PRIVATE "/MAP")
+	endif()
+
+	add_custom_command(TARGET zdoom POST_BUILD
+		COMMAND "mt.exe" -manifest \"${CMAKE_CURRENT_SOURCE_DIR}\\common\\platform\\win32\\manifest.xml\" -outputresource:\"$<TARGET_FILE:zdoom>\"\;\#1
+		COMMENT "Adding manifest..."
+	)
+endif()
 
 # Set up flags for GCC
+if(COMPILER_IS_GNUCXX_COMPATIBLE)
+	target_compile_definitions(zdoom PRIVATE __forceinline=inline)
 
-if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-	if( PROFILE )
-		set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -pg" )
-		set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pg" )
-		set( CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -pg" )
-		set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -pg" )
-	endif()
-
-	#set( REL_CXX_FLAGS "-fno-rtti" )
-	if( NOT PROFILE AND NOT APPLE )
-		# On OS X frame pointers are required for exception handling, at least with Clang
-		set( REL_CXX_FLAGS "${REL_CXX_FLAGS} -fomit-frame-pointer" )
-	endif()
-	set( CMAKE_CXX_FLAGS_RELEASE "${REL_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}" )
-	set( CMAKE_CXX_FLAGS_MINSIZEREL "${REL_CXX_FLAGS} ${CMAKE_CXX_FLAGS_MINSIZEREL}" )
-	set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${REL_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}" )
-
-	# Support for the GCC/Clang sanitizers.
-	set( WITH_ASAN 0 CACHE BOOL "Enable the Address Sanitizer")
-	if( NOT CMAKE_COMPILER_IS_GNUCXX )
-		set( WITH_MSAN 0 CACHE BOOL "Enable the Memory Sanitizer")
-	endif( NOT CMAKE_COMPILER_IS_GNUCXX )
-	set( WITH_UBSAN 0 CACHE BOOL "Enable the Undefined Behavior Sanitizer")
-	if( WITH_MSAN )
-		if ( WITH_ASAN OR WITH_UBSAN )
-			message( SEND_ERROR "You can't use MSAN with either ASAN or UBSAN." )
-		endif ( WITH_ASAN OR WITH_UBSAN )
-	endif( WITH_MSAN )
-
-	set( SANITIZER_FLAG "" )
-	if( WITH_ASAN )
-		set( SANITIZER_FLAG "-fsanitize=address" )
-		if ( WITH_UBSAN )
-			set( SANITIZER_FLAG "${SANITIZER_FLAG},undefined" )
-		endif( WITH_UBSAN )
-	elseif( WITH_MSAN )
-		set( SANITIZER_FLAG "-fsanitize=memory" )
-	elseif( WITH_UBSAN )
-		set( SANITIZER_FLAG "-fsanitize=undefined" )
-	endif( WITH_ASAN )
-
-	set( CMAKE_CXX_FLAGS "${SANITIZER_FLAG} ${CMAKE_CXX_FLAGS}" )
-	set( CMAKE_C_FLAGS "${SANITIZER_FLAG} ${CMAKE_C_FLAGS}" )
-	set( CMAKE_EXE_LINKER_FLAGS "${SANITIZER_FLAG} ${CMAKE_EXE_LINKER_FLAGS}" )
-
-	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.5")
-		set( CMAKE_C_FLAGS "-Wno-unused-result ${CMAKE_C_FLAGS}" )
-		set( CMAKE_CXX_FLAGS "-Wno-unused-result ${CMAKE_CXX_FLAGS}" )
-	endif()
-	if( CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
-		if( APPLE OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "3.6" )
-			set( CMAKE_CXX_FLAGS "-Wno-inconsistent-missing-override ${CMAKE_CXX_FLAGS}" )
+	set(ZDOOM_PROFILE FALSE CACHE BOOL "Enable profiling with gprof for Debug and RelWithDebInfo build types.")
+	if(ZDOOM_PROFILE)
+		target_compile_options(zdoom PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-pg>)
+	else()
+		if(NOT APPLE)
+			# On OS X frame pointers are required for exception handling, at least with Clang
+			target_compile_options(zdoom PRIVATE -fomit-frame-pointer)
 		endif()
 	endif()
-	set( CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused -Wno-unused-parameter -Wno-missing-field-initializers -ffp-contract=off ${CMAKE_C_FLAGS}" )
-	set( CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-unused -Wno-unused-parameter -Wno-missing-field-initializers -ffp-contract=off ${CMAKE_CXX_FLAGS}" )
 
-	if( NOT X64 AND NOT CAN_DO_MFPMATH )
-		set( CMAKE_C_FLAGS "-DNO_SSE ${CMAKE_C_FLAGS}" )
-		set( CMAKE_CXX_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
+	# Support for the GCC/Clang sanitizers.
+	option(WITH_ASAN "Enable the Address Sanitizer" OFF)
+	option(WITH_MSAN "Enable the Memory Sanitizer" OFF)
+	option(WITH_UBSAN "Enable the Undefined Behavior Sanitizer" OFF)
+	if(WITH_MSAN)
+		if(WITH_ASAN OR WITH_UBSAN)
+			message(SEND_ERROR "You can't use MSAN with either ASAN or UBSAN.")
+		endif()
 	endif()
 
+	if(WITH_ASAN AND WITH_UBSAN)
+		target_compile_options(zdoom PRIVATE "-fsanitize=address,undefined")
+	elseif(WITH_ASAN)
+		target_compile_options(zdoom PRIVATE "-fsanitize=address")
+	elseif(WITH_UBSAN)
+		target_compile_options(zdoom PRIVATE "-fsanitize=undefined")
+	elseif(WITH_MSAN)
+		target_compile_options(zdoom PRIVATE "-fsanitize=memory")
+	endif()
+
+	target_compile_options(zdoom PRIVATE -Wall -Wextra -Wno-unused -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-result -ffp-contract=off)
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_compile_options(zdoom PRIVATE -Wno-inconsistent-missing-override)
+	endif()
 	# Remove extra warnings when using the official DirectX headers.
 	# Also, TDM-GCC 4.4.0 no longer accepts glibc-style printf formats as valid,
 	# which is a royal pain. The previous version I had been using was fine with them.
 	# MinGW: switch to the Windows Unicode API.
-	if( WIN32 )
-		set( CMAKE_CXX_FLAGS "-Wno-unknown-pragmas -Wno-comment -Wno-format ${CMAKE_CXX_FLAGS}" )
-		set( CMAKE_CXX_FLAGS "-D_UNICODE -DUNICODE ${CMAKE_CXX_FLAGS}" )
-		set( CMAKE_CXX_FLAGS "-D_WIN32_WINNT=0x0600 ${CMAKE_CXX_FLAGS}" )
-		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -municode" )
-	endif()
-
-	# Detect FreeBSD and add flags
-	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC" )
+	if(WIN32)
+		target_compile_options(zdoom PRIVATE -Wno-unknown-pragmas -Wno-comment -Wno-format)
+		target_link_options(zdoom PRIVATE -municode)
 	endif()
 	
-	if(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
-		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -ljemalloc")
-	endif()
-
-	if( NOT NO_STRIP )
-		set (CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s" )
-		set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} -s" )
+	if(CMAKE_SYSTEM_NAME MATCHES "NetBSD")
+		target_link_libraries(zdoom PRIVATE jemalloc)
 	endif()
 endif()
 
 # Check for thread_local keyword, it's optional at the moment
 
-CHECK_CXX_SOURCE_COMPILES("thread_local int i; int main() { i = 0; }"
-	HAVE_THREAD_LOCAL)
-
-if( NOT HAVE_THREAD_LOCAL )
-	message( SEND_ERROR "C++ compiler doesn't support thread_local storage duration specifier" )
+# For some reason check_cxx_source_compiles isn't respecting CMAKE_CXX_STANDARD
+# like CMP0067 would imply it should. This is a bit of a hack since this
+# variable isn't exactly for specifying options to the underlying try_compile.
+set(CMAKE_REQUIRED_DEFINITIONS CXX_STANDARD ${CMAKE_CXX_STANDARD})
+check_cxx_source_compiles("thread_local int i; int main() { i = 0; }" HAVE_THREAD_LOCAL)
+set(CMAKE_REQUIRED_DEFINITIONS)
+if(NOT HAVE_THREAD_LOCAL)
+	message(SEND_ERROR "C++ compiler doesn't support thread_local storage duration specifier")
 endif()
 
 # Check for functions that may or may not exist.
 
-CHECK_FUNCTION_EXISTS( filelength FILELENGTH_EXISTS )
-if( FILELENGTH_EXISTS )
-	add_definitions( -DHAVE_FILELENGTH=1 )
-endif()
+require_stricmp(zdoom PRIVATE)
+require_strnicmp(zdoom PRIVATE)
 
-CHECK_FUNCTION_EXISTS( strupr STRUPR_EXISTS )
-if( NOT STRUPR_EXISTS )
-	add_definitions( -DNEED_STRUPR=1 )
-endif()
-
-require_stricmp()
-require_strnicmp()
-
-if( NOT MSVC )
-	add_definitions( -D__forceinline=inline )
-endif()
-
-if( UNIX )
-	CHECK_LIBRARY_EXISTS( rt clock_gettime "" CLOCK_GETTIME_IN_RT )
-	if( NOT CLOCK_GETTIME_IN_RT )
-		CHECK_FUNCTION_EXISTS( clock_gettime CLOCK_GETTIME_EXISTS )
-		if( NOT CLOCK_GETTIME_EXISTS )
-			message( STATUS "Could not find clock_gettime. Timing statistics will not be available." )
-			add_definitions( -DNO_CLOCK_GETTIME )
+if(UNIX)
+	check_library_exists(rt clock_gettime "" CLOCK_GETTIME_IN_RT)
+	if(NOT CLOCK_GETTIME_IN_RT)
+		check_function_exists(clock_gettime CLOCK_GETTIME_EXISTS)
+		if(NOT CLOCK_GETTIME_EXISTS)
+			message(STATUS "Could not find clock_gettime. Timing statistics will not be available.")
+			add_definitions(-DNO_CLOCK_GETTIME)
 		endif()
 	else()
-		set( ZDOOM_LIBS ${ZDOOM_LIBS} rt )
+		target_link_libraries(zdoom PRIVATE rt)
 	endif()
 endif()
 
-# Flags
+# END
+# BEGIN: Source file listing
 
-# Update gitinfo.h
-
-add_custom_target( revision_check ALL
-	COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/tools/updaterevision/UpdateRevision.cmake" src/gitinfo.h
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+target_include_directories(zdoom PRIVATE . ${CMAKE_CURRENT_BINARY_DIR}
+	common/audio/sound
+	common/audio/music
+	common/2d
+	common/thirdparty
+	common/textures
+	common/textures/formats
+	common/textures/hires
+	common/textures
+	common/models
+	common/filesystem
+	common/utility
+	common/console
+	common/engine
+	common/menu
+	common/statusbar
+	common/fonts
+	common/objects
+	common/rendering
+	common/rendering/hwrenderer/data
+	common/rendering/gl_load
+	common/rendering/gl
+	common/rendering/vulkan/thirdparty
+	common/rendering/polyrenderer/backend
+	common/rendering/polyrenderer/drawers
+	common/scripting/vm
+	common/scripting/jit
+	common/scripting/core
+	common/scripting/interface
+	common/scripting/frontend
+	common/scripting/backend
+	g_statusbar
+	console
+	playsim
+	playsim/bots
+	playsim/mapthinkers
+	gamedata
+	gamedata/textures
+	gamedata/fonts
+	rendering
+	rendering/hwrenderer
+	rendering/2d
+	r_data
+	sound
+	menu
+	sound/backend
+	xlat
+	utility
+	utility/nodebuilder
+	scripting
+	scripting/zscript
+	rendering
 )
-
-# Libraries ZDoom needs
-
-set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${CMAKE_DL_LIBS}" )
-if (HAVE_VULKAN)
-	set( ZDOOM_LIBS ${ZDOOM_LIBS} "glslang" "SPIRV" "OGLCompiler")
-endif()
-include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}" )
-
-if( ${HAVE_VM_JIT} )
-	add_definitions( -DHAVE_VM_JIT )
-	include_directories( "${ASMJIT_INCLUDE_DIR}" )
-	set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ASMJIT_LIBRARIES}")
-endif()
-
-# Start defining source files for ZDoom
-set( PLAT_WIN32_SOURCES
-	win32/i_steam.cpp
-	common/platform/win32/hardware.cpp
-	common/platform/win32/i_input.cpp
-	common/platform/win32/i_keyboard.cpp
-	common/platform/win32/i_mouse.cpp
-	common/platform/win32/i_dijoy.cpp
-	common/platform/win32/i_rawps2.cpp
-	common/platform/win32/i_xinput.cpp
-	common/platform/win32/i_main.cpp
-	common/platform/win32/i_system.cpp
-	common/platform/win32/i_specialpaths.cpp
-	common/platform/win32/st_start.cpp
-	common/platform/win32/st_start_util.cpp
-	common/platform/win32/gl_sysfb.cpp
-	common/platform/win32/base_sysfb.cpp
-	common/platform/win32/win32basevideo.cpp
-	common/platform/win32/win32glvideo.cpp
-	common/platform/win32/win32polyvideo.cpp)
-
-if (HAVE_VULKAN)
-	set (PLAT_WIN32_SOURCES ${PLAT_WIN32_SOURCES} common/platform/win32/win32vulkanvideo.cpp )
-endif()
-
-# todo: implement an actual crash catcher for ARM
-# for now this is purely experimental
-if (NOT ${ZDOOM_TARGET_ARCH} MATCHES "arm" )
-	set (PLAT_WIN32_SOURCES ${PLAT_WIN32_SOURCES} common/platform/win32/i_crash.cpp )
-endif()
-if (MSVC AND ${ZDOOM_TARGET_ARCH} MATCHES "arm")
-	set (PLAT_WIN32_SOURCES ${PLAT_WIN32_SOURCES} common/platform/win32/i_crash_arm.cpp )
-	add_definitions( -DNO_SSE -D__ARM__ -DRAPIDJSON_ENDIAN=RAPIDJSON_LITTLEENDIAN)
-endif()
-	
-set( PLAT_POSIX_SOURCES
-	posix/i_steam.cpp
-	common/platform/posix/i_system_posix.cpp )
-set( PLAT_SDL_SOURCES
-	common/platform/posix/sdl/crashcatcher.c
-	common/platform/posix/sdl/hardware.cpp
-	common/platform/posix/sdl/i_gui.cpp
-	common/platform/posix/sdl/i_input.cpp
-	common/platform/posix/sdl/i_joystick.cpp
-	common/platform/posix/sdl/i_main.cpp
-	common/platform/posix/sdl/i_system.cpp
-	common/platform/posix/sdl/sdlglvideo.cpp
-	common/platform/posix/sdl/st_start.cpp )
-set( PLAT_UNIX_SOURCES
-	common/platform/posix/unix/i_specialpaths.cpp
-	common/platform/posix/unix/gtk_dialogs.cpp )
-set( PLAT_OSX_SOURCES
-	common/platform/posix/osx/iwadpicker_cocoa.mm
-	common/platform/posix/osx/i_specialpaths.mm
-	posix/osx/zdoom.icns )
-set( PLAT_COCOA_SOURCES
-	common/platform/posix/cocoa/i_input.mm
-	common/platform/posix/cocoa/i_joystick.cpp
-	common/platform/posix/cocoa/i_main.mm
-	common/platform/posix/cocoa/i_system.mm
-	common/platform/posix/cocoa/i_video.mm
-	common/platform/posix/cocoa/st_console.mm
-	common/platform/posix/cocoa/st_start.mm )
-
-if( WIN32 )
-	set( SYSTEM_SOURCES_DIR common/platform/win32 )
-	set( SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} )
-	set( OTHER_SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} ${PLAT_UNIX_SOURCES} )
-
-	set( SYSTEM_SOURCES ${SYSTEM_SOURCES} win32/zdoom.rc )
-elseif( APPLE )
-	if( OSX_COCOA_BACKEND )
-		set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/cocoa )
-		set( SYSTEM_SOURCES ${PLAT_COCOA_SOURCES} )
-		set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES} )
-	else()
-		set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/sdl )
-		set( SYSTEM_SOURCES ${PLAT_SDL_SOURCES} )
-		set( PLAT_OSX_SOURCES ${PLAT_OSX_SOURCES} common/platform/posix/sdl/i_system.mm )
-		set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_COCOA_SOURCES} ${PLAT_UNIX_SOURCES} )
-	endif()
-
-	set( SYSTEM_SOURCES ${SYSTEM_SOURCES} ${PLAT_POSIX_SOURCES} ${PLAT_OSX_SOURCES} )
-
-	set_source_files_properties( posix/osx/zdoom.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources )
-	set_source_files_properties( common/platform/posix/osx/iwadpicker_cocoa.mm PROPERTIES COMPILE_FLAGS -fobjc-exceptions )
-else()
-	set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/sdl )
-	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES} )
-	set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} )
-endif()
-
-if( HAVE_MMX )
-	add_definitions( -DHAVE_MMX=1 )
-
-	set( SYSTEM_SOURCES ${SYSTEM_SOURCES}
-		common/textures/hires/hqnx_asm/hq2x_asm.cpp
-		common/textures/hires/hqnx_asm/hq3x_asm.cpp
-		common/textures/hires/hqnx_asm/hq4x_asm.cpp
-		common/textures/hires/hqnx_asm/hqnx_asm_Image.cpp)
-
-	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		set_source_files_properties(
-			common/textures/hires/hqnx_asm/hq2x_asm.cpp
-			common/textures/hires/hqnx_asm/hq3x_asm.cpp
-			common/textures/hires/hqnx_asm/hq4x_asm.cpp
-			common/textures/hires/hqresize.cpp
-			PROPERTIES COMPILE_FLAGS "-mmmx" )
-	endif( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-endif( HAVE_MMX )
-
-if( HAVE_PARALLEL_FOR )
-	add_definitions( -DHAVE_PARALLEL_FOR=1 )
-elseif( HAVE_DISPATCH_APPLY )
-	add_definitions( -DHAVE_DISPATCH_APPLY=1 )
-else()
-	option( NO_OPENMP "Disable usage of OpenMP" OFF )
-
-	if( NOT NO_OPENMP )
-		include( FindOpenMP )
-
-		if( OPENMP_FOUND )
-			set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
-			set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
-		endif( OPENMP_FOUND )
-	endif( NOT NO_OPENMP )
-endif()
-
-add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h
-	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/gamedata/xlat/xlat_parser.y
-	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/gamedata/xlat/xlat_parser.y )
-
-add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h
-	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/zcc-parse.lemon
-	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/zcc-parse.lemon )
-
-add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
-	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/common/engine/sc_man_scanner.re
-	DEPENDS re2c ${CMAKE_CURRENT_SOURCE_DIR}/common/engine/sc_man_scanner.re )
-
-include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
-
-option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
-
-if( NOT SEND_ANON_STATS )
-	add_definitions( -DNO_SEND_STATS )
-endif()
 
 # Project files should be aware of the header files. We can GLOB these since
 # there's generally a new cpp for every header so this file will get changed
-file( GLOB HEADER_FILES
+file(GLOB HEADER_FILES
 	console/*.h
 	playsim/*.h
 	playsim/bots/*.h
@@ -644,8 +534,122 @@ file( GLOB HEADER_FILES
 	rendering/hwrenderer/scene/*.h
 	*.h
 )
+target_sources(zdoom PRIVATE ${HEADER_FILES})
 
-set ( SWRENDER_SOURCES
+# Start defining source files. NOTE that certain generators use the target
+# source list to determine what files should be visibile from the project file
+# so it's generally preferred to add sources and then mark them as "header"
+# files if we don't want them compiled.
+#
+# Generally speaking a list should be named here only if it either requires
+# specific compile flags, or there are conditions upon which the sources are
+# disabled.
+
+set(PLAT_WIN32_SOURCES
+	win32/i_steam.cpp
+	win32/zdoom.rc
+	common/platform/win32/hardware.cpp
+	common/platform/win32/i_crash.cpp
+	common/platform/win32/i_crash_arm.cpp
+	common/platform/win32/i_input.cpp
+	common/platform/win32/i_keyboard.cpp
+	common/platform/win32/i_mouse.cpp
+	common/platform/win32/i_dijoy.cpp
+	common/platform/win32/i_rawps2.cpp
+	common/platform/win32/i_xinput.cpp
+	common/platform/win32/i_main.cpp
+	common/platform/win32/i_system.cpp
+	common/platform/win32/i_specialpaths.cpp
+	common/platform/win32/st_start.cpp
+	common/platform/win32/st_start_util.cpp
+	common/platform/win32/gl_sysfb.cpp
+	common/platform/win32/base_sysfb.cpp
+	common/platform/win32/win32basevideo.cpp
+	common/platform/win32/win32glvideo.cpp
+	common/platform/win32/win32polyvideo.cpp
+	common/platform/win32/win32vulkanvideo.cpp
+)
+
+set(PLAT_POSIX_SOURCES
+	posix/i_steam.cpp
+	common/platform/posix/i_system_posix.cpp
+)
+set(PLAT_SDL_SOURCES
+	common/platform/posix/sdl/crashcatcher.c
+	common/platform/posix/sdl/hardware.cpp
+	common/platform/posix/sdl/i_gui.cpp
+	common/platform/posix/sdl/i_input.cpp
+	common/platform/posix/sdl/i_joystick.cpp
+	common/platform/posix/sdl/i_main.cpp
+	common/platform/posix/sdl/i_system.cpp
+	common/platform/posix/sdl/sdlglvideo.cpp
+	common/platform/posix/sdl/st_start.cpp
+)
+set(PLAT_UNIX_SOURCES
+	common/platform/posix/unix/i_specialpaths.cpp
+	common/platform/posix/unix/gtk_dialogs.cpp
+)
+set(PLAT_OSX_SOURCES
+	common/platform/posix/osx/iwadpicker_cocoa.mm
+	common/platform/posix/osx/i_specialpaths.mm
+	posix/osx/zdoom.icns
+)
+set(PLAT_COCOA_SOURCES
+	common/platform/posix/cocoa/i_input.mm
+	common/platform/posix/cocoa/i_joystick.cpp
+	common/platform/posix/cocoa/i_main.mm
+	common/platform/posix/cocoa/i_system.mm
+	common/platform/posix/cocoa/i_video.mm
+	common/platform/posix/cocoa/st_console.mm
+	common/platform/posix/cocoa/st_start.mm
+)
+
+if(WIN32)
+	target_include_directories(zdoom PRIVATE common/platform/win32)
+	target_sources(zdoom PRIVATE ${PLAT_WIN32_SOURCES})
+	set(NOT_COMPILED_SOURCE_FILES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} ${PLAT_UNIX_SOURCES})
+elseif(APPLE)
+	target_include_directories(zdoom PRIVATE common/platform/posix)
+	if(OSX_COCOA_BACKEND)
+		target_include_directories(zdoom PRIVATE common/platform/posix/cocoa)
+		target_sources(zdoom PRIVATE ${PLAT_COCOA_SOURCES})
+		set(NOT_COMPILED_SOURCE_FILES ${PLAT_WIN32_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES})
+	else()
+		list(APPEND PLAT_OSX_SOURCES common/platform/posix/sdl/i_system.mm)
+		target_include_directories(zdoom PRIVATE common/platform/posix common/platform/posix/sdl)
+		target_sources(zdoom PRIVATE ${PLAT_SDL_SOURCES})
+		set(NOT_COMPILED_SOURCE_FILES ${PLAT_WIN32_SOURCES} ${PLAT_COCOA_SOURCES} ${PLAT_UNIX_SOURCES})
+	endif()
+
+	target_sources(zdoom PRIVATE ${PLAT_POSIX_SOURCES} ${PLAT_OSX_SOURCES})
+else()
+	target_include_directories(zdoom PRIVATE common/platform/posix common/platform/posix/sdl)
+	target_sources(zdoom PRIVATE ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES})
+	set(NOT_COMPILED_SOURCE_FILES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES})
+endif()
+
+set(MMX_SOURCES
+	common/textures/hires/hqnx_asm/hq2x_asm.cpp
+	common/textures/hires/hqnx_asm/hq3x_asm.cpp
+	common/textures/hires/hqnx_asm/hq4x_asm.cpp
+	common/textures/hires/hqnx_asm/hqnx_asm_Image.cpp
+)
+target_sources(zdoom PRIVATE ${MMX_SOURCES})
+
+set(VM_JIT_SOURCES
+	common/scripting/jit/jit.cpp
+	common/scripting/jit/jit_runtime.cpp
+	common/scripting/jit/jit_call.cpp
+	common/scripting/jit/jit_flow.cpp
+	common/scripting/jit/jit_load.cpp
+	common/scripting/jit/jit_math.cpp
+	common/scripting/jit/jit_move.cpp
+	common/scripting/jit/jit_store.cpp
+)
+target_sources(zdoom PRIVATE ${VM_JIT_SOURCES})
+
+# Software renderer sources
+list(APPEND NOT_COMPILED_SOURCE_FILES
 	rendering/swrenderer/r_swcolormaps.cpp
 	rendering/swrenderer/r_swrenderer.cpp
 	rendering/swrenderer/r_renderthread.cpp
@@ -690,7 +694,8 @@ set ( SWRENDER_SOURCES
 	rendering/swrenderer/plane/r_slopeplane.cpp
 )
 
-set( POLYRENDER_SOURCES
+# Polyrender sources
+list(APPEND NOT_COMPILED_SOURCE_FILES
 	common/rendering/polyrenderer/drawers/poly_triangle.cpp
 	common/rendering/polyrenderer/drawers/poly_thread.cpp
 	common/rendering/polyrenderer/drawers/screen_triangle.cpp
@@ -701,10 +706,7 @@ set( POLYRENDER_SOURCES
 
 # These files will be flagged as "headers" so that they appear in project files
 # without being compiled.
-set( NOT_COMPILED_SOURCE_FILES
-	${OTHER_SYSTEM_SOURCES}
-	${SWRENDER_SOURCES}
-	${POLYRENDER_SOURCES}
+list(APPEND NOT_COMPILED_SOURCE_FILES
 	sc_man_scanner.h
 	common/engine/sc_man_scanner.re
 	g_statusbar/sbarinfo_commands.cpp
@@ -717,23 +719,8 @@ set( NOT_COMPILED_SOURCE_FILES
 	common/platform/win32/zutil.natvis
 )
 
-set( VM_JIT_SOURCES
-	common/scripting/jit/jit.cpp
-	common/scripting/jit/jit_runtime.cpp
-	common/scripting/jit/jit_call.cpp
-	common/scripting/jit/jit_flow.cpp
-	common/scripting/jit/jit_load.cpp
-	common/scripting/jit/jit_math.cpp
-	common/scripting/jit/jit_move.cpp
-	common/scripting/jit/jit_store.cpp
-)
-
-# This is disabled for now because I cannot find a way to give the .pch file a different name.
-# Visual C++ 2015 seems hell-bent on only allowing one .pch file with the same name as the executable.
-#enable_precompiled_headers( g_pch2.h FASTMATH_PCH_SOURCES )
-
 # Enable fast math for some sources
-set( FASTMATH_SOURCES
+set(FASTMATH_SOURCES
 	rendering/swrenderer/r_all.cpp
 	rendering/swrenderer/r_swscene.cpp
 	common/rendering/polyrenderer/poly_all.cpp
@@ -762,10 +749,16 @@ set( FASTMATH_SOURCES
 	rendering/hwrenderer/scene/hw_walls_vertex.cpp
 	rendering/hwrenderer/scene/hw_weapon.cpp
 	common/utility/matrix.cpp
+
+	# Polybackend sources
+	common/rendering/polyrenderer/backend/poly_framebuffer.cpp
+	common/rendering/polyrenderer/backend/poly_buffers.cpp
+	common/rendering/polyrenderer/backend/poly_hwtexture.cpp
+	common/rendering/polyrenderer/backend/poly_renderstate.cpp
 )
 	
-#Vulkan stuff must go into a separate list because it needs to be disabled for some platforms
-set (VULKAN_SOURCES
+# Vulkan stuff must go into a separate list because it needs to be disabled for some platforms
+set(VULKAN_SOURCES
 	common/rendering/vulkan/system/vk_device.cpp
 	common/rendering/vulkan/system/vk_swapchain.cpp
 	common/rendering/vulkan/system/vk_builders.cpp
@@ -783,20 +776,9 @@ set (VULKAN_SOURCES
 	common/rendering/vulkan/thirdparty/volk/volk.c
 	common/rendering/vulkan/thirdparty/vk_mem_alloc/vk_mem_alloc.cpp
 )
+list(APPEND FASTMATH_SOURCES ${VULKAN_SOURCES})
 
-if (HAVE_VULKAN)
-	set (FASTMATH_SOURCES ${FASTMATH_SOURCES} ${VULKAN_SOURCES})
-endif()
-
-set (POLYBACKEND_SOURCES
-	common/rendering/polyrenderer/backend/poly_framebuffer.cpp
-	common/rendering/polyrenderer/backend/poly_buffers.cpp
-	common/rendering/polyrenderer/backend/poly_hwtexture.cpp
-	common/rendering/polyrenderer/backend/poly_renderstate.cpp
-)
-set (FASTMATH_SOURCES ${FASTMATH_SOURCES} ${POLYBACKEND_SOURCES})
-
-set (PCH_SOURCES
+set(PCH_SOURCES
 	am_map.cpp
 	playsim/bots/b_bot.cpp
 	playsim/bots/b_func.cpp
@@ -1170,23 +1152,8 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_utility.cpp
 )
 
-if( ${HAVE_VM_JIT} )
-	set( PCH_SOURCES ${PCH_SOURCES} ${VM_JIT_SOURCES} )
-else()
-	set( NOT_COMPILED_SOURCE_FILES ${NOT_COMPILED_SOURCE_FILES} ${VM_JIT_SOURCES} )
-endif()
-
-if( MSVC )
-	enable_precompiled_headers( g_pch.h PCH_SOURCES )
-else()
-	# Temporary solution for compilers other than MSVC
-	set_source_files_properties( ${PCH_SOURCES} PROPERTIES COMPILE_FLAGS "-include g_pch.h" )
-endif()
-
-add_executable( zdoom WIN32 MACOSX_BUNDLE
-	${HEADER_FILES}
+target_sources(zdoom PRIVATE
 	${NOT_COMPILED_SOURCE_FILES}
-	${SYSTEM_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
 	common/utility/x86.cpp
@@ -1213,128 +1180,95 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	common/thirdparty/math/fastsin.cpp
 )
 
-set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
-set_source_files_properties( xlat/parse_xlat.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c" )
-set_source_files_properties( common/engine/sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
-set_source_files_properties( ${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE )
+# END
+# BEGIN: Source disablement
 
-
-if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-	# [BL] Solaris requires these to be explicitly linked.
-	set( ZDOOM_LIBS ${ZDOOM_LIBS} nsl socket)
+get_property(ZMUSIC_TYPE TARGET ZMusic::zmusic PROPERTY TYPE)
+if(ZMUSIC_TYPE STREQUAL "STATIC_LIBRARY")
+	# ZMusic has a copy of this translation unit
+	list(REMOVE_ITEM PCH_SOURCES common/utility/i_module.cpp)
+	list(APPEND NOT_COMPILED_SOURCE_FILES common/utility/i_module.cpp)
 endif()
 
-if( UNIX )
-	find_package( Backtrace )
-	if(Backtrace_FOUND)
-		set( ZDOOM_LIBS ${ZDOOM_LIBS} ${Backtrace_LIBRARIES} )
-	endif()
+if(NOT HAVE_VM_JIT)
+	list(APPEND NOT_COMPILED_SOURCE_FILES ${VM_JIT_SOURCES})
 endif()
 
-target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa lzma ${ZMUSIC_LIBRARIES} )
+if(NOT HAVE_VULKAN)
+	list(APPEND NOT_COMPILED_SOURCE_FILES
+		${VULKAN_SOURCES}
+		common/platform/win32/win32vulkanvideo.cpp
+	)
+endif()
 
-include_directories( .
-	common/audio/sound
-	common/audio/music
-	common/2d
-	common/thirdparty
-	common/textures
-	common/textures/formats
-	common/textures/hires
-	common/textures
-	common/models
-	common/filesystem
-	common/utility
-	common/console
-	common/engine
-	common/menu
-	common/statusbar
-	common/fonts
-	common/objects
-	common/rendering
-	common/rendering/hwrenderer/data
-	common/rendering/gl_load
-	common/rendering/gl
-	common/rendering/vulkan/thirdparty
-	common/rendering/polyrenderer/backend
-	common/rendering/polyrenderer/drawers
-	common/scripting/vm
-	common/scripting/jit
-	common/scripting/core
-	common/scripting/interface
-	common/scripting/frontend
-	common/scripting/backend
-	g_statusbar
-	console
-	playsim
-	playsim/bots
-	playsim/mapthinkers
-	gamedata
-	gamedata/textures
-	gamedata/fonts
-	rendering
-	rendering/hwrenderer
-	rendering/2d
-	r_data
-	sound
-	menu
-	sound/backend
-	xlat
-	utility
-	utility/nodebuilder
-	scripting
-	scripting/zscript
-	rendering
-	../libraries/gdtoa
-	../libraries/glslang/glslang/Public
-	../libraries/glslang/spirv
-	${CMAKE_BINARY_DIR}/libraries/gdtoa
-	${SYSTEM_SOURCES_DIR}
-)
-
-add_dependencies( zdoom revision_check )
-
-# Due to some quirks, we need to do this in this order
-if( NOT ZDOOM_OUTPUT_OLDSTYLE )
-	# RUNTIME_OUTPUT_DIRECTORY does not exist in CMake 2.4.
-	# Linux distributions are slow to adopt 2.6. :(
-	set_target_properties( zdoom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
-	set_target_properties( zdoom PROPERTIES OUTPUT_NAME ${ZDOOM_EXE_NAME} )
+if(ZDOOM_TARGET_ARCH MATCHES "arm")
+	list(APPEND NOT_COMPILED_SOURCE_FILES common/platform/win32/i_crash.cpp)
 else()
-	set_target_properties( zdoom PROPERTIES
-		RUNTIME_OUTPUT_NAME ${ZDOOM_EXE_NAME}
-		RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_DEBUG ${ZDOOM_EXE_NAME}d
-		RUNTIME_OUTPUT_DIRECTORY_DEBUG ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_MINSIZEREL ${ZDOOM_EXE_NAME}msr
-		RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${ZDOOM_OUTPUT_DIR}
-		RUNTIME_OUTPUT_NAME_RELWITHDEBINFO ${ZDOOM_EXE_NAME}rd
-		RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${ZDOOM_OUTPUT_DIR}
-	)
+	list(APPEND NOT_COMPILED_SOURCE_FILES common/platform/win32/i_crash_arm.cpp)
 endif()
 
-if( MSVC )
-	option( ZDOOM_GENERATE_MAPFILE "Generate .map file for debugging." OFF )
-	set( LINKERSTUFF "/MANIFEST:NO" )
+if(NOT HAVE_MMX)
+	list(APPEND NOT_COMPILED_SOURCE_FILES ${MXX_SOURCES})
+endif()
 
-	if( ZDOOM_GENERATE_MAPFILE )
-		set( LINKERSTUFF "${LINKERSTUFF} /MAP" )
+# END
+# BEGIN: Source properties and linking
+
+if(MSVC)
+	enable_precompiled_headers(zdoom g_pch.h PCH_SOURCES)
+else()
+	# Temporary solution for compilers other than MSVC
+	set_source_files_properties(${PCH_SOURCES} PROPERTIES COMPILE_FLAGS "-include g_pch.h")
+endif()
+
+use_fast_math(${FASTMATH_SOURCES})
+set_source_files_properties(${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+
+set_source_files_properties(posix/osx/zdoom.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+set_source_files_properties(common/platform/posix/osx/iwadpicker_cocoa.mm PROPERTIES COMPILE_FLAGS -fobjc-exceptions)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+	# GCC misoptimizes this file
+	set_source_files_properties(oplsynth/fmopl.cpp PROPERTIES COMPILE_FLAGS "-fno-tree-dominator-opts -fno-tree-fre")
+endif()
+
+if(HAVE_MMX)
+	target_compile_definitions(zdoom PRIVATE HAVE_MMX=1)
+
+	if(MMX_ENABLE)
+		set_property(SOURCE ${MMX_SOURCES} APPEND PROPERTY COMPILE_FLAGS "${MMX_ENABLE}")
 	endif()
-	set_target_properties(zdoom PROPERTIES LINK_FLAGS ${LINKERSTUFF})
+endif()
 
-	add_custom_command(TARGET zdoom POST_BUILD
-		COMMAND "mt.exe" -manifest \"${CMAKE_CURRENT_SOURCE_DIR}\\common\\platform\\win32\\manifest.xml\" -outputresource:\"$<TARGET_FILE:zdoom>\"\;\#1
-		COMMENT "Adding manifest..."
+if(SSE2_ENABLE)
+	# Need to enable intrinsics for these files.
+	set_property(
+		SOURCE
+			common/rendering/polyrenderer/poly_all.cpp
+			rendering/swrenderer/r_all.cpp
+			common/utility/palette.cpp
+			common/utility/x86.cpp
+		APPEND PROPERTY COMPILE_FLAGS "${SSE2_ENABLE}"
 	)
-
 endif()
 
-if( NOT WIN32 AND NOT APPLE )
-	FILE( WRITE ${CMAKE_CURRENT_BINARY_DIR}/link-make "if [ ! -e ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME} ]; then ln -sf ${CMAKE_CURRENT_BINARY_DIR}/${ZDOOM_EXE_NAME} ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME}; fi" )
-	add_custom_command( TARGET zdoom POST_BUILD
-		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
-		COMMAND /bin/sh -c ${CMAKE_CURRENT_BINARY_DIR}/link-make )
+# Libraries ZDoom needs
+target_link_libraries(zdoom PRIVATE ZLIB::ZLIB JPEG::JPEG BZip2::BZip2 ZMusic::zmusic gdtoa lzma ${CMAKE_DL_LIBS})
+
+target_compile_definitions(zdoom PRIVATE HAVE_SOFTPOLY)
+
+if (HAVE_VULKAN)
+	target_compile_definitions(zdoom PRIVATE HAVE_VULKAN)
+	target_link_libraries(zdoom PRIVATE glslang SPIRV OGLCompiler)
 endif()
+
+if(HAVE_VM_JIT)
+	target_link_libraries(zdoom PRIVATE asmjit)
+	target_compile_definitions(zdoom PRIVATE HAVE_VM_JIT)
+endif()
+
+# END
+# BEGIN: Install rules
 
 add_custom_command(TARGET zdoom POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -1345,56 +1279,18 @@ add_custom_command(TARGET zdoom POST_BUILD
 	${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn $<TARGET_FILE_DIR:zdoom>/fm_banks/gs-by-papiezak-and-sneakernets.wopn
 )
 
-if( WIN32 )
-	set( INSTALL_SOUNDFONT_PATH . CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
-else()
-	set( INSTALL_SOUNDFONT_PATH share/games/doom CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
-endif()
 install(DIRECTORY "${PROJECT_BINARY_DIR}/soundfonts" "${PROJECT_BINARY_DIR}/fm_banks"
-		DESTINATION ${INSTALL_SOUNDFONT_PATH}
-		COMPONENT "Soundfont resources")
+	DESTINATION ${CMAKE_INSTALL_DATADIR}
+	COMPONENT "Soundfont resources"
+)
 
-if( CMAKE_COMPILER_IS_GNUCXX )
-	# GCC misoptimizes this file
-	set_source_files_properties( oplsynth/fmopl.cpp PROPERTIES COMPILE_FLAGS "-fno-tree-dominator-opts -fno-tree-fre" )
-endif()
-if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-	# Need to enable intrinsics for these files.
-	if( SSE_MATTERS )
-		set_property( SOURCE
-			common/rendering/polyrenderer/poly_all.cpp
-			rendering/swrenderer/r_all.cpp
-			utility/palette.cpp
-			utility/x86.cpp
-			APPEND_STRING PROPERTY COMPILE_FLAGS " -msse2 -mmmx" )
-	endif()
-endif()
-
-if( APPLE )
-	set( LINK_FRAMEWORKS "-framework Cocoa -framework IOKit -framework OpenGL")
-
-	if( HAVE_VULKAN )
-		set( LINK_FRAMEWORKS "${LINK_FRAMEWORKS} -framework QuartzCore" )
-	endif()
-
-	set_target_properties(zdoom PROPERTIES
-		LINK_FLAGS "${LINK_FRAMEWORKS}"
-		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist"
-		XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "" )
-
-	# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
-	# if placed in the directory with the main executable
-	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rpath @executable_path" )
-endif()
-
-if( WIN32 )
-	set( INSTALL_PATH . CACHE STRING "Directory where the zdoom executable will be placed during install." )
-else()
-	set( INSTALL_PATH bin CACHE STRING "Directory where the zdoom executable will be placed during install." )
-endif()
 install(TARGETS zdoom
-		DESTINATION ${INSTALL_PATH}
-		COMPONENT "Game executable")
+	DESTINATION ${CMAKE_INSTALL_BINDIR}
+	COMPONENT "Game executable"
+)
+
+# END
+# BEGIN: Source groups
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
@@ -1485,3 +1381,5 @@ source_group("Statusbar" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_stat
 source_group("Versioning" FILES version.h win32/zdoom.rc)
 source_group("Xlat" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/xlat/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h)
 source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h common/engine/sc_man_scanner.re)
+
+# END

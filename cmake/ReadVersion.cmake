@@ -1,0 +1,10 @@
+function(read_version File OutVar)
+	set_property(DIRECTORY ${CMAKE_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${File}")
+	file(READ ${File} VersionData)
+
+	if(VersionData MATCHES "#define RC_PRODUCTVERSION ([0-9]+),([0-9]+),([0-9]+),([0-9]+)")
+		set(${OutVar} "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}.${CMAKE_MATCH_4}" PARENT_SCOPE)
+	else()
+		message(SEND_ERROR "Could not find product version from version header.")
+	endif()
+endfunction()

@@ -8,7 +8,6 @@
 /build
 /release_gcc
 /DOOMSTATS.TXT
-/src/gitinfo.h
 /wadsrc/*.pk3
 /disasm.txt
 /build_vc2015

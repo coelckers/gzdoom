@@ -65,7 +65,9 @@ jobs:
           }
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2.3.4
+      with:
+        submodules: true
 
     - name: Install Dependencies
       shell: bash
@@ -73,22 +75,11 @@ jobs:
         if [[ ! -z "${{ matrix.config.deps_cmdline }}" ]]; then
           eval ${{ matrix.config.deps_cmdline }}
         fi
-        mkdir build
-        if [[ "${{ runner.os }}" == 'macOS' ]]; then
-          export ZMUSIC_PACKAGE=zmusic-1.1.7-macos.tar.bz2
-        elif [[ "${{ runner.os }}" == 'Linux' ]]; then
-          export ZMUSIC_PACKAGE=zmusic-1.1.7-linux.tar.bz2
-        fi
-        if [[ ! -z "${ZMUSIC_PACKAGE}" ]]; then
-          cd build
-          wget -q "https://github.com/coelckers/gzdoom/releases/download/ci_deps/${ZMUSIC_PACKAGE}"
-          tar -xf "${ZMUSIC_PACKAGE}"
-        fi
 
     - name: Configure
       shell: bash
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} -DCMAKE_PREFIX_PATH=`pwd`/build/zmusic -DPK3_QUIET_ZIPDIR=ON ${{ matrix.config.extra_options }} .
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} -DPK3_QUIET_ZIPDIR=ON ${{ matrix.config.extra_options }} .
 
     - name: Build
       shell: bash
@@ -107,7 +98,8 @@ jobs:
         elif [[ "${{ runner.os }}" == 'macOS' ]]; then
           cp -r gzdoom.app package
         elif [[ "${{ runner.os }}" == 'Linux' ]]; then
-          cp gzdoom *.pk3 package
+          cmake --build build --config ${{ matrix.config.build_type }} --target package
+          cp *.deb package
         fi
 
     - name: Upload Package
