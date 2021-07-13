@@ -59,7 +59,7 @@ struct SoundAndString
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
-void PronounMessage (const char *from, char *to, int pronoun,
+void PronounMessage (const char *from, char *to, FPronouns pronouns,
 	const char *victim, const char *killer);
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
@@ -266,7 +266,7 @@ bool AnnounceKill (AActor *killer, AActor *killee)
 		{
 			char assembled[1024];
 
-			PronounMessage (message, assembled, killee->player->userinfo.GetGender(),
+			PronounMessage (message, assembled, killee->player->userinfo.GetPronouns(),
 				killee->player->userinfo.GetName(), killerName);
 			Printf (PRINT_MEDIUM, "%s\n", assembled);
 		}
@@ -298,7 +298,7 @@ bool AnnounceTelefrag (AActor *killer, AActor *killee)
 		{
 			char assembled[1024];
 
-			PronounMessage (message, assembled, killee->player->userinfo.GetGender(),
+			PronounMessage (message, assembled, killee->player->userinfo.GetPronouns(),
 				killee->player->userinfo.GetName(), killer->player->userinfo.GetName());
 			Printf (PRINT_MEDIUM, "%s\n", assembled);
 		}

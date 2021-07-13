@@ -46,6 +46,7 @@ class PlayerMenu : ListMenu
 	static native void TeamChanged(int val);
 	static native void AlwaysRunChanged(int val);
 	static native void GenderChanged(int val);
+	static native void PronounsChanged(String str);
 	static native void SwitchOnPickupChanged(int val);
 	static native void ColorChanged(int red, int green, int blue);
 	static native void ColorSetChanged(int red);

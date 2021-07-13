@@ -427,6 +427,15 @@ OptionValue "PlayerSkin"
 	// Filled in programmatically
 }
 
+OptionValue "PlayerPronouns"
+{
+	-1, "Custom"
+	0, "They"
+	1, "She"
+	2, "He"
+	3, "It"
+}
+
 /*
 	IfGame(Doom, Heretic, Strife, Chex)
 	{
@@ -455,6 +464,13 @@ OptionMenu "NewPlayerMenu" protected
 	AutoaimSlider "$PLYRMNU_AUTOAIM"
 	PlayerSwitchOnPickupItem "$PLYRMNU_SWITCHONPICKUP", "OffOn"
 	Option "$PLYRMNU_ALWAYSRUN", cl_run, "OnOff"
+	PlayerPronounsItem "Pronouns", "PlayerPronouns"
+	PlayerPronounField "Subject", 0
+	PlayerPronounField "Object", 1
+	PlayerPronounField "Poss. Determiner", 2
+	PlayerPronounField "Poss. Pronoun", 3
+	PlayerPronounField "Reflexive", 4
+	PlayerPronounField "Perfective", 5
 	Class "NewPlayerMenu"
 }
 

@@ -226,6 +226,24 @@ DEFINE_ACTION_FUNCTION(DPlayerMenu, GenderChanged)
 //
 //=============================================================================
 
+DEFINE_ACTION_FUNCTION(DPlayerMenu, PronounsChanged)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(str);
+	// only allow if the menu is active to prevent abuse.
+	if (DMenu::InMenu)
+	{
+		cvar_set("pronouns", str);
+	}
+	return 0;
+}
+
+//=============================================================================
+//
+//
+//
+//=============================================================================
+
 DEFINE_ACTION_FUNCTION(DPlayerMenu, SwitchOnPickupChanged)
 {
 	PARAM_PROLOGUE;

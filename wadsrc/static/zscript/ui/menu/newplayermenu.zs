@@ -406,6 +406,206 @@ class OptionMenuItemPlayerSwitchOnPickupItem : OptionMenuItemOptionBase
 //
 //=============================================================================
 
+class OptionMenuItemPlayerPronounsItem : OptionMenuItemOptionBase
+{
+	OptionMenuItemPlayerPronounsItem Init(String label, Name values)
+	{
+		Super.Init(label, 'none', values, null, false);
+		return self;
+	}
+
+	//=============================================================================
+	override int GetSelection()
+	{
+		let pronounsStr = players[consoleplayer].GetPronouns();
+		Array<String> pronouns;
+		pronounsStr.Split(pronouns, "/");
+
+		let pronoun = "Custom";
+		for(int i = 0; i < PRONOUN_MAX; i++)
+		{
+			bool matched = true;
+			for(int j = 0; j < pronouns.Size(); j++)
+			{
+				if (!(pronouns[j] ~== PlayerInfo.DefaultPronouns[i * PRONOUN_SET_SIZE + j]))
+				{
+					matched = false;
+					break;
+				}
+			}
+
+			if (matched)
+			{
+				pronoun = PlayerInfo.DefaultPronouns[i * PRONOUN_SET_SIZE];
+				break;
+			}
+		}
+
+		int Selection = -1;
+		int cnt = OptionValues.GetCount(mValues);
+		if (cnt > 0)
+		{
+			for(int i = 0; i < cnt; i++)
+			{
+				if (pronoun ~== OptionValues.GetText(mValues, i))
+				{
+					Selection = i;
+					break;
+				}
+			}
+		}
+		return Selection;
+	}
+
+	override void SetSelection(int Selection)
+	{
+		int cnt = OptionValues.GetCount(mValues);
+		if (cnt > 0)
+		{
+			// Don't select 'Custom'
+			if (OptionValues.GetText(mValues, Selection) == "Custom")
+			{
+				Selection = GetSelection() > 1? 1 : cnt - 1;
+			}
+
+			let val = OptionValues.GetText(mValues, Selection);
+			PlayerMenu.PronounsChanged(val.MakeLower());
+		}
+	}
+
+	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
+	{
+		if (Selectable())
+		{
+			return super.Draw(desc, y, indent, selected);
+		}
+		return indent;
+	}
+
+	override bool Selectable()
+	{
+		// auto falls back to enu
+		return language == "auto" || language.Left(2) == "en";
+	}
+}
+
+//=============================================================================
+//
+//
+//
+//=============================================================================
+
+class OptionMenuItemPlayerPronounField : OptionMenuItemTextField
+{
+	int mPronoun;
+
+	OptionMenuItemPlayerPronounField Init(String label, int pronoun)
+	{
+		Super.Init(label, "");
+		mPronoun = pronoun;
+		return self;
+	}
+
+	static clearscope String BuildPronounsString(Array<String> pronouns, int count = -1)
+	{
+		if (count < 0) count = pronouns.Size();
+
+		let pronounsStr = pronouns[0];
+		for(int j = 1; j < count; j++)
+		{
+			pronounsStr.AppendFormat("/%s", pronouns[j]);
+		}
+
+		return pronounsStr;
+	}
+
+	static clearscope String ShortestUniqueMatch(Array<String> pronouns)
+	{
+		bool notMatching[PRONOUN_MAX];
+		int matchCount = PRONOUN_MAX;
+		int uniqueMatchEnd = -1;
+
+		for(int i = 0; i < pronouns.Size(); i++)
+		{
+			for(int j = 0; j < PRONOUN_MAX; j++)
+			{
+				if (notMatching[j]) continue;
+
+				if (PlayerInfo.DefaultPronouns[j * PRONOUN_SET_SIZE + i] != pronouns[i])
+				{
+					notMatching[j] = true;
+					matchCount--;
+
+					if (matchCount == 1 && uniqueMatchEnd < 0)
+					{
+						// Only one match left - unique match ends here
+						uniqueMatchEnd = i;
+					}
+					else if (matchCount == 0)
+					{
+						// Didn't match any defaults - return the whole thing
+						return BuildPronounsString(pronouns);
+					}
+				}
+			}
+		}
+
+		// Fully matched a default pronoun set - return it
+		return BuildPronounsString(pronouns, uniqueMatchEnd);
+	}
+
+	override bool, String GetString (int i)
+	{
+		if (i == 0)
+		{
+			let pronounsStr = players[consoleplayer].GetPronouns();
+			Array<String> pronouns;
+			pronounsStr.Split(pronouns, "/");
+
+			return true, pronouns[mPronoun];
+		}
+		return false, "";
+	}
+
+	override bool SetString (int i, String s)
+	{
+		if (i == 0)
+		{
+			let slash = s.IndexOf("/");
+			if (slash != -1) s = s.Left(slash);
+
+			Array<String> pronouns;
+			players[consoleplayer].GetPronouns().Split(pronouns, "/");
+			pronouns[mPronoun] = s;
+
+			PlayerMenu.PronounsChanged(ShortestUniqueMatch(pronouns));
+			return true;
+		}
+		return false;
+	}
+
+	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
+	{
+		if (Selectable())
+		{
+			return super.Draw(desc, y, indent, selected);
+		}
+		return indent;
+	}
+
+	override bool Selectable()
+	{
+		// auto falls back to enu
+		return language == "auto" || language.Left(2) == "en";
+	}
+}
+
+//=============================================================================
+//
+//
+//
+//=============================================================================
+
 class NewPlayerMenu : OptionMenu
 {
 	protected native static void UpdateColorsets(PlayerClass cls);

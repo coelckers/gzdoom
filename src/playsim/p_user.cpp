@@ -188,6 +188,59 @@ DEFINE_ACTION_FUNCTION(FPlayerClass, CheckSkin)
 	ACTION_RETURN_BOOL(self->CheckSkin(skin));
 }
 
+// Custom pronouns
+bool FPronouns::FromString(FString str)
+{
+	TArray<FString> split;
+	str.Split(split, "/", FString::TOK_SKIPEMPTY);
+
+	split.Clamp(6);
+	if (split.Size() == 0) split.Push(str);
+
+	for (unsigned int i = 0; i < split.Size(); i++)
+	{
+		split[i].StripLeftRight();
+		split[i].ToLower();
+	}
+
+	if (split.Size() == 6)
+	{
+		for (unsigned int i = 0; i < 6; i++) pronoun[i] = split[i];
+		BuildString();
+		return true;
+	}
+
+	// Incomplete - try to find matching default
+	for (const struct FPronouns &defPron : DefaultPronouns)
+	{
+		if (defPron[0] != split[0]) continue;
+
+		for (unsigned int i = 1; i < split.Size(); i++)
+			if (defPron[i] != split[i]) return false;
+
+		// Matches completely - copy it
+		for (unsigned int i = 0; i < 6; i++) pronoun[i] = defPron[i];
+		BuildString();
+		return true;
+	}
+
+	return false;
+}
+
+void FPronouns::BuildString()
+{
+	string.Format("%s/%s/%s/%s/%s/%s",
+		pronoun[0].GetChars(), pronoun[1].GetChars(), pronoun[2].GetChars(),
+		pronoun[3].GetChars(), pronoun[4].GetChars(), pronoun[5].GetChars()
+	);
+}
+
+DEFINE_ACTION_FUNCTION(_PlayerInfo, GetPronouns)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	ACTION_RETURN_STRING(self->userinfo.GetPronouns());
+}
+
 //===========================================================================
 //
 // GetDisplayName

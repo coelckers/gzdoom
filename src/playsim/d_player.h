@@ -173,6 +173,41 @@ public:
 
 extern TArray<FPlayerClass> PlayerClasses;
 
+// Custom pronouns
+struct FPronouns {
+	FString pronoun[6];
+	FString string;
+
+	FPronouns() {}
+	FPronouns(FString p1, FString p2, FString p3, FString p4, FString p5, FString p6)
+		: pronoun{p1, p2, p3, p4, p5, p6} { BuildString(); }
+
+	FString& operator[](uint8_t index) { return pronoun[index]; }
+	const FString& operator[](uint8_t index) const { return pronoun[index]; }
+
+	operator const char *()  const { return string; }
+	operator const FString() const { return string; }
+
+	void BuildString();
+	bool FromString (FString str);
+};
+
+enum
+{
+	PRONOUN_THEY,
+	PRONOUN_SHE,
+	PRONOUN_HE,
+	PRONOUN_IT,
+	PRONOUN_MAX
+};
+
+const struct FPronouns DefaultPronouns[PRONOUN_MAX] = {
+	{"they", "them", "their", "theirs", "themself", "they're"},
+	{"she",  "her",  "her",   "hers",   "herself",  "she's"  },
+	{"he",   "him",  "his",   "his",    "himself",  "he's"   },
+	{"it",   "it",   "its",   "its",    "itself",   "it's"   }
+};
+
 // User info (per-player copies of each CVAR_USERINFO cvar)
 struct userinfo_t : TMap<FName,FBaseCVar *>
 {
@@ -256,6 +291,17 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 	{
 		auto cvar = CheckKey(NAME_Gender);
 		return cvar ? *static_cast<FIntCVar *>(*cvar) : 0;
+	}
+	const struct FPronouns GetPronouns() const
+	{
+		const char *str = *static_cast<FStringCVar *>(*CheckKey(NAME_Pronouns));
+
+		FPronouns pronouns;
+		if (pronouns.FromString(str))
+		{
+			return pronouns;
+		}
+		else return DefaultPronouns[PRONOUN_THEY];
 	}
 	bool GetNoAutostartMap() const
 	{
