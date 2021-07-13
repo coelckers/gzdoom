@@ -201,6 +201,29 @@ class OptionMenu : Menu
 			}
 			return true;
 		}
+		else if (ev.type == UIEvent.Type_Char)
+		{
+			int key = String.CharLower(ev.keyChar);
+			int itemsNumber = mDesc.mItems.Size();
+			int direction = ev.IsAlt ? -1 : 1;
+			for (int i = 0; i < itemsNumber; ++i)
+			{
+				int index = (mDesc.mSelectedItem + direction * (i + 1) + itemsNumber) % itemsNumber;
+				if (!mDesc.mItems[index].Selectable()) continue;
+				String label = StringTable.Localize(mDesc.mItems[index].mLabel);
+				int firstLabelCharacter = String.CharLower(label.GetNextCodePoint(0));
+				if (firstLabelCharacter == key)
+				{
+					mDesc.mSelectedItem = index;
+					break;
+				}
+			}
+			if (mDesc.mSelectedItem <= mDesc.mScrollTop + mDesc.mScrollPos
+				|| mDesc.mSelectedItem >= VisBottom)
+			{
+				mDesc.mScrollPos = MAX(mDesc.mSelectedItem - mDesc.mScrollTop - 1, 0);
+			}
+		}
 		return Super.OnUIEvent(ev);
 	}
 
