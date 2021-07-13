@@ -83,7 +83,7 @@ class HexenStatusBar : BaseStatusBar
 			// This code was changed to always fit the item into the box, regardless of alignment or sprite size.
 			// Heretic's ARTIBOX is 30x30 pixels. 
 			DrawImage("ARTIBOX", (-66, -1), 0, HX_SHADOW);
-			DrawInventoryIcon(CPlayer.mo.InvSel, (-66, -15), DI_ARTIFLASH|DI_ITEM_CENTER, boxsize:(28, 28));
+			DrawInventoryIcon(CPlayer.mo.InvSel, (-66, -15), DI_ARTIFLASH|DI_ITEM_CENTER|DI_DIMDEPLETED, boxsize:(28, 28));
 			if (CPlayer.mo.InvSel.Amount > 1)
 			{
 				DrawString(mIndexFont, FormatNumber(CPlayer.mo.InvSel.Amount, 3), (-52, -2 - mIndexFont.mFont.GetHeight()), DI_TEXT_ALIGN_RIGHT);
@@ -146,7 +146,7 @@ class HexenStatusBar : BaseStatusBar
 				//inventory box
 				if (CPlayer.mo.InvSel != null)
 				{
-					DrawInventoryIcon(CPlayer.mo.InvSel, (159.5, 177), DI_ARTIFLASH|DI_ITEM_CENTER, boxsize:(28, 28));
+					DrawInventoryIcon(CPlayer.mo.InvSel, (159.5, 177), DI_ARTIFLASH|DI_ITEM_CENTER|DI_DIMDEPLETED, boxsize:(28, 28));
 					if (CPlayer.mo.InvSel.Amount > 1)
 					{
 						DrawString(mIndexFont, FormatNumber(CPlayer.mo.InvSel.Amount, 3), (174, 184), DI_TEXT_ALIGN_RIGHT);

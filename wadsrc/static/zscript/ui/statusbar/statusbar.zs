@@ -981,7 +981,7 @@ class BaseStatusBar : StatusBarCore native
 				}
 				else
 				{
-					DrawInventoryIcon(item, itempos + (boxsize.X * i, 0), flags | DI_ITEM_CENTER );
+					DrawInventoryIcon(item, itempos + (boxsize.X * i, 0), flags | DI_ITEM_CENTER | DI_DIMDEPLETED);
 				}
 			}
 			
