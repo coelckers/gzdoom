@@ -1346,9 +1346,11 @@ OptionMenu AutomapOptions protected
 
 	StaticText ""
 	Option "$AUTOMAPMNU_ROTATE",				"am_rotate", "RotateTypes"
+	Option "$AUTOMAPMNU_FOLLOW",				"am_followplayer", "OnOff"
 	Option "$AUTOMAPMNU_OVERLAY",				"am_overlay", "OverlayTypes"
 	Option "$AUTOMAPMNU_TEXTURED",				"am_textured", "OnOff"
-	Option "$AUTOMAPMNU_FOLLOW",				"am_followplayer", "OnOff"
+	Slider "$AUTOMAPMNU_LINEALPHA",				"am_linealpha", 0.1, 1.0, 0.1, 1
+	Slider "$AUTOMAPMNU_LINETHICKNESS",			"am_linethickness", 1, 8, 1, 0
 
 	StaticText ""
 	Option "$AUTOMAPMNU_SHOWITEMS",				"am_showitems", "OnOff"

@@ -131,6 +131,8 @@ struct islope_t
 //=============================================================================
 
 CVAR(Bool, am_textured, false, CVAR_ARCHIVE)
+CVAR(Float, am_linealpha, 1.0f, CVAR_ARCHIVE)
+CVAR(Int, am_linethickness, 1, CVAR_ARCHIVE)
 CVAR(Bool, am_thingrenderstyles, true, CVAR_ARCHIVE)
 CVAR(Int, am_showsubsector, -1, 0);
 
@@ -1735,7 +1737,16 @@ void DAutomap::drawMline (mline_t *ml, const AMColor &color)
 
 	if (clipMline (ml, &fl))
 	{
-		twod->AddLine (f_x + fl.a.x, f_y + fl.a.y, f_x + fl.b.x, f_y + fl.b.y, -1, -1, INT_MAX, INT_MAX, color.RGB);
+		const int x1 = f_x + fl.a.x;
+		const int y1 = f_y + fl.a.y;
+		const int x2 = f_x + fl.b.x;
+		const int y2 = f_y + fl.b.y;
+		if (am_linethickness >= 2) {
+			twod->AddThickLine(x1, y1, x2, y2, am_linethickness, color.RGB, uint8_t(am_linealpha * 255));
+		} else {
+			// Use more efficient thin line drawing routine.
+			twod->AddLine(x1, y1, x2, y2, -1, -1, INT_MAX, INT_MAX, color.RGB, uint8_t(am_linealpha * 255));
+		}
 	}
 }
 
