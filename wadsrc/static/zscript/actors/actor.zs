@@ -740,10 +740,12 @@ class Actor : Thinker native
 	
 	native bool TryMove(vector2 newpos, int dropoff, bool missilecheck = false, FCheckPosition tm = null);
 	native bool CheckMove(vector2 newpos, int flags = 0, FCheckPosition tm = null);
+	native vector2 CarryingSectorsHandling();
 	native void NewChaseDir();
 	native void RandomChaseDir();
 	native bool CheckMissileRange();
 	native bool SetState(state st, bool nofunction = false);
+	native bool AdvanceState();
 	clearscope native state FindState(statelabel st, bool exact = false) const;
 	bool SetStateLabel(statelabel st, bool nofunction = false) { return SetState(FindState(st), nofunction); }
 	native action state ResolveState(statelabel st);	// this one, unlike FindState, is context aware.
@@ -784,6 +786,10 @@ class Actor : Thinker native
 	native clearscope double GetCameraHeight() const;
 	native clearscope double GetGravity() const;
 	native void DoMissileDamage(Actor target);
+	native void RespawnHandling();
+	native void BotThink();
+	native void SlopedFloorHandling();
+	native void FullAxisMovement(vector2 carryoffset);
 
 	//==========================================================================
 	//
@@ -821,6 +827,7 @@ class Actor : Thinker native
 	protected native void DestroyAllInventory();	// This is not supposed to be called by user code!
 	native clearscope Inventory FindInventory(class<Inventory> itemtype, bool subclass = false) const;
 	native Inventory GiveInventoryType(class<Inventory> itemtype);
+	native void ApplyPowerups();
 	native bool UsePuzzleItem(int PuzzleItemType);
 
 	action native void SetCamera(Actor cam, bool revert = false);

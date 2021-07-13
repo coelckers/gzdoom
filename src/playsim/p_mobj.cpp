@@ -596,6 +596,46 @@ DEFINE_ACTION_FUNCTION(AActor, SetState)
 	ACTION_RETURN_BOOL(self->SetState(state, nofunction));
 };
 
+//==========================================================================
+//
+// AActor::AdvanceState
+//
+// Advance actor through its states
+// Returned bool specify state state, tautology
+//
+//==========================================================================
+
+bool AActor::AdvanceState()
+{
+	assert (state != NULL);
+	if (state == NULL)
+	{
+		Destroy();
+		return false;
+	}
+	if (!CheckNoDelay())
+		return false;// freed itself
+
+	if (tics != -1)
+	{
+		// cycle through states, calling action functions at transitions
+		// [RH] Use tics <= 0 instead of == 0 so that spawnstates
+		// of 0 tics work as expected.
+		if (--tics <= 0)
+		{
+			if (!SetState(state->GetNextState()))
+				return false;// freed itself
+		}
+	}
+
+	return true;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, AdvanceState)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(self->AdvanceState());
+};
 
 //============================================================================
 //
@@ -772,6 +812,41 @@ void AActor::ClearInventory()
 		VMValue params[] = { this };
 		VMCall(func, params, 1, nullptr, 0);
 	}
+}
+
+//============================================================================
+//
+// AActor :: ApplyPowerups
+//
+// Iterate through actors inventory, calling each item DoEffect function
+//
+//============================================================================
+
+void AActor::ApplyPowerups()
+{
+	if (!player || !(player->cheats & CF_PREDICTING))
+	{
+		// Handle powerup effects here so that the order is controlled
+		// by the order in the inventory, not the order in the thinker table
+		AActor *item = Inventory;
+		
+		while (item != NULL)
+		{
+			IFVIRTUALPTRNAME(item, NAME_Inventory, DoEffect)
+			{
+				VMValue params[1] = { item };
+				VMCall(func, params, 1, nullptr, 0);
+			}
+			item = item->Inventory;
+		}
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, ApplyPowerups)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->ApplyPowerups();
+	return 0;
 }
 
 //============================================================================
@@ -3562,10 +3637,15 @@ DEFINE_ACTION_FUNCTION(AActor, CheckPortalTransition)
 	return 0;
 }
 
+//============================================================================
 //
-// P_MobjThinker
+// AActor :: CarryingSectorsHandling
 //
-void AActor::Tick ()
+// Accumulate abd return total actor displacement caused by carrying sectors
+// 
+//============================================================================
+
+DVector2 AActor::CarryingSectorsHandling()
 {
 	// [RH] Data for Heretic/Hexen scrolling sectors
 	static const int8_t HexenCompatSpeeds[] = {-25, 0, -10, -5, 0, 5, 10, 0, 25 };
@@ -3584,9 +3664,396 @@ void AActor::Tick ()
 	static const uint8_t HereticScrollDirs[4] = { 6, 9, 1, 4 };
 	static const uint8_t HereticSpeedMuls[5] = { 5, 10, 25, 30, 35 };
 
+	DVector2 displacement(0,0);
 
+	if ((((flags8 & MF8_INSCROLLSEC) && Level->Scrolls.Size() > 0) || player != NULL) && !(flags & MF_NOCLIP) && !(flags & MF_NOSECTOR))
+	{
+		double height, waterheight;	// killough 4/4/98: add waterheight
+		const msecnode_t *node;
+		int countx, county;
+
+		// Clear the flag for the next frame.
+		flags8 &= ~MF8_INSCROLLSEC;
+
+		// killough 3/7/98: Carry things on floor
+		// killough 3/20/98: use new sector list which reflects true members
+		// killough 3/27/98: fix carrier bug
+		// killough 4/4/98: Underwater, carry things even w/o gravity
+
+		// Move objects only if on floor or underwater,
+		// non-floating, and clipped.
+
+		countx = county = 0;
+
+		for (node = touching_sectorlist; node; node = node->m_tnext)
+		{
+			sector_t *sec = node->m_sector;
+			DVector2 scrollv;
+
+			if (Level->Scrolls.Size() > unsigned(sec->Index()))
+			{
+				scrollv = Level->Scrolls[sec->Index()];
+			}
+			else
+			{
+				scrollv.Zero();
+			}
+
+			if (player != NULL)
+			{
+				int scrolltype = sec->special;
+
+				if (scrolltype >= Scroll_North_Slow &&
+					scrolltype <= Scroll_SouthWest_Fast)
+				{ // Hexen scroll special
+					scrolltype -= Scroll_North_Slow;
+					if (Level->i_compatflags&COMPATF_RAVENSCROLL)
+					{
+						scrollv.X -= HexenCompatSpeeds[HexenScrollies[scrolltype][0]+4] * (1. / (32 * CARRYFACTOR));
+						scrollv.Y += HexenCompatSpeeds[HexenScrollies[scrolltype][1]+4] * (1. / (32 * CARRYFACTOR));
+
+					}
+					else
+					{
+						// Use speeds that actually match the scrolling textures!
+						scrollv.X -= HexenScrollies[scrolltype][0] * 0.5;
+						scrollv.Y += HexenScrollies[scrolltype][1] * 0.5;
+					}
+				}
+				else if (scrolltype >= Carry_East5 &&
+							scrolltype <= Carry_West35)
+				{ // Heretic scroll special
+					scrolltype -= Carry_East5;
+					uint8_t dir = HereticScrollDirs[scrolltype / 5];
+					double carryspeed = HereticSpeedMuls[scrolltype % 5] * (1. / (32 * CARRYFACTOR));
+					if (scrolltype < 5 && !(Level->i_compatflags&COMPATF_RAVENSCROLL))
+					{
+						// Use speeds that actually match the scrolling textures!
+						carryspeed = (1 << ((scrolltype % 5) + 15)) / 65536.;
+					}
+					scrollv.X += carryspeed * ((dir & 3) - 1);
+					scrollv.Y += carryspeed * (((dir & 12) >> 2) - 1);
+				}
+				else if (scrolltype == dScroll_EastLavaDamage)
+				{ // Special Heretic scroll special
+					if (Level->i_compatflags&COMPATF_RAVENSCROLL)
+					{
+						scrollv.X += 28. / (32*CARRYFACTOR);
+					}
+					else
+					{
+						// Use a speed that actually matches the scrolling texture!
+						scrollv.X += 12. / (32 * CARRYFACTOR);
+					}
+				}
+				else if (scrolltype == Scroll_StrifeCurrent)
+				{ // Strife scroll special
+					int anglespeed = Level->GetFirstSectorTag(sec) - 100;
+					double carryspeed = (anglespeed % 10) / (16 * CARRYFACTOR);
+					DAngle angle = ((anglespeed / 10) * 45.);
+					scrollv += angle.ToVector(carryspeed);
+				}
+			}
+
+			if (scrollv.isZero())
+			{
+				continue;
+			}
+			sector_t *heightsec = sec->GetHeightSec();
+			if (flags & MF_NOGRAVITY && heightsec == NULL)
+			{
+				continue;
+			}
+			DVector3 pos = PosRelative(sec);
+			height = sec->floorplane.ZatPoint (pos);
+			double height2 = sec->floorplane.ZatPoint(this);
+			if (isAbove(height))
+			{
+				if (heightsec == NULL)
+				{
+					continue;
+				}
+
+				waterheight = heightsec->floorplane.ZatPoint (pos);
+				if (waterheight > height && Z() >= waterheight)
+				{
+					continue;
+				}
+			}
+
+			displacement += scrollv;
+			if (scrollv.X) countx++;
+			if (scrollv.Y) county++;
+		}
+
+		// Some levels designed with Boom in mind actually want things to accelerate
+		// at neighboring scrolling sector boundaries. But it is only important for
+		// non-player objects.
+		if (player != NULL || !(Level->i_compatflags & COMPATF_BOOMSCROLL))
+		{
+			if (countx > 1)
+			{
+				displacement.X /= countx;
+			}
+			if (county > 1)
+			{
+				displacement.Y /= county;
+			}
+		}
+	}
+
+	return displacement;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CarryingSectorsHandling)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_VEC2(self->CarryingSectorsHandling());
+}
+
+//============================================================================
+//
+// AActor :: RespawnHandling
+//
+// Control how monsters should be respawned on nightmare difficulty
+// 
+//============================================================================
+
+void AActor::RespawnHandling()
+{
+	if (tics == -1 || state->GetCanRaise())
+	{
+		int respawn_monsters = G_SkillProperty(SKILLP_Respawn);
+		// check for nightmare respawn
+		if (!(flags5 & MF5_ALWAYSRESPAWN))
+		{
+			if (!respawn_monsters || !(flags3 & MF3_ISMONSTER) || (flags2 & MF2_DORMANT) || (flags5 & MF5_NEVERRESPAWN))
+				return;
+
+			int limit = G_SkillProperty (SKILLP_RespawnLimit);
+			if (limit > 0 && skillrespawncount >= limit)
+				return;
+		}
+
+		movecount++;
+
+		if (movecount < respawn_monsters)
+			return;
+
+		if (Level->time & 31)
+			return;
+
+		if (pr_nightmarerespawn() > 4)
+			return;
+
+		P_NightmareRespawn (this);
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, RespawnHandling)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->RespawnHandling();
+	return 0;
+}
+
+void AActor::BotThink()
+{
+	if (Level->BotInfo.botnum && !demoplayback &&
+	((flags & (MF_SPECIAL|MF_MISSILE)) || (flags3 & MF3_ISMONSTER)))
+	{
+		Level->BotInfo.BotTick(this);
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, BotThink)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->BotThink();
+	return 0;
+}
+
+void AActor::SlopedFloorHandling()
+{
+	// [RH] If standing on a steep slope, fall down it
+	if ((flags & MF_SOLID) && !(flags & (MF_NOCLIP|MF_NOGRAVITY)) &&
+		!(flags & MF_NOBLOCKMAP) &&
+		Vel.Z <= 0 &&
+		floorz == Z())
+	{
+		secplane_t floorplane;
+
+		// Check 3D floors as well
+		floorplane = P_FindFloorPlane(floorsector, PosAtZ(floorz));
+
+		if (floorplane.fC() < MaxSlopeSteepness &&
+			floorplane.ZatPoint (PosRelative(floorsector)) <= floorz)
+		{
+			const msecnode_t *node;
+			bool dopush = true;
+
+			if (floorplane.fC() > MaxSlopeSteepness*2/3)
+			{
+				for (node = touching_sectorlist; node; node = node->m_tnext)
+				{
+					const sector_t *sec = node->m_sector;
+					if (sec->floorplane.fC() >= MaxSlopeSteepness)
+					{
+						if (floorplane.ZatPoint(PosRelative(node->m_sector)) >= Z() - MaxStepHeight)
+						{
+							dopush = false;
+							break;
+						}
+					}
+				}
+			}
+			if (dopush)
+			{
+				Vel += floorplane.Normal().XY();
+			}
+		}
+	}
+}
+
+DEFINE_ACTION_FUNCTION(AActor, SlopedFloorHandling)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->SlopedFloorHandling();
+	return 0;
+}
+
+void AActor::FullAxisMovement(DVector2 carryoffset)
+{
 	AActor *onmo;
 
+	BlockingMobj = nullptr;
+	sector_t* oldBlockingCeiling = BlockingCeiling;
+	sector_t* oldBlockingFloor = BlockingFloor;
+	Blocking3DFloor = nullptr;
+	BlockingFloor = nullptr;
+	BlockingCeiling = nullptr;
+	double oldfloorz = P_XYMovement (this, carryoffset);
+	if (ObjectFlags & OF_EuthanizeMe)
+	{ // actor was destroyed
+		return;
+	}
+	// [ZZ] trigger hit floor/hit ceiling actions from XY movement
+	if (BlockingFloor && BlockingFloor != oldBlockingFloor && (!player || !(player->cheats & CF_PREDICTING)) && BlockingFloor->SecActTarget)
+		BlockingFloor->TriggerSectorActions(this, SECSPAC_HitFloor);
+	if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && (!player || !(player->cheats & CF_PREDICTING)) && BlockingCeiling->SecActTarget)
+		BlockingCeiling->TriggerSectorActions(this, SECSPAC_HitCeiling);
+	if (Vel.X == 0 && Vel.Y == 0) // Actors at rest
+	{
+		if (flags2 & MF2_BLASTED)
+		{ // Reset to not blasted when velocities are gone
+			flags2 &= ~MF2_BLASTED;
+		}
+		if ((flags6 & MF6_TOUCHY) && !IsSentient())
+		{ // Arm a mine which has come to rest
+			flags6 |= MF6_ARMED;
+		}
+
+	}
+
+	if (Vel.Z != 0 || BlockingMobj || Z() != floorz)
+	{	// Handle Z velocity and gravity
+		if (((flags2 & MF2_PASSMOBJ) || (flags & MF_SPECIAL)) && !(Level->i_compatflags & COMPATF_NO_PASSMOBJ))
+		{
+			if (!(onmo = P_CheckOnmobj (this)))
+			{
+				P_ZMovement (this, oldfloorz);
+				flags2 &= ~MF2_ONMOBJ;
+			}
+			else
+			{
+				if (player)
+				{
+					if (Vel.Z < Level->gravity * Sector->gravity * (-1./100)// -655.36f)
+						&& !(flags&MF_NOGRAVITY))
+					{
+						PlayerLandedOnThing (this, onmo);
+					}
+				}
+				if (onmo->Top() - Z() <= MaxStepHeight)
+				{
+					if (player && player->mo == this)
+					{
+						player->viewheight -= onmo->Top() - Z();
+						double deltaview = player->GetDeltaViewHeight();
+						if (deltaview > player->deltaviewheight)
+						{
+							player->deltaviewheight = deltaview;
+						}
+					} 
+					SetZ(onmo->Top());
+				}
+				// Check for MF6_BUMPSPECIAL
+				// By default, only players can activate things by bumping into them
+				// We trigger specials as long as we are on top of it and not just when
+				// we land on it. This could be considered as gravity making us continually
+				// bump into it, but it also avoids having to worry about walking on to
+				// something without dropping and not triggering anything.
+				if ((onmo->flags6 & MF6_BUMPSPECIAL) && ((player != NULL)
+					|| ((onmo->activationtype & THINGSPEC_MonsterTrigger) && (flags3 & MF3_ISMONSTER))
+					|| ((onmo->activationtype & THINGSPEC_MissileTrigger) && (flags & MF_MISSILE))
+					) && (Level->maptime > onmo->lastbump)) // Leave the bumper enough time to go away
+				{
+					if (player == NULL || !(player->cheats & CF_PREDICTING))
+					{
+						if (P_ActivateThingSpecial(onmo, this))
+							onmo->lastbump = Level->maptime + TICRATE;
+					}
+				}
+				if (Vel.Z != 0 && (BounceFlags & BOUNCE_Actors))
+				{
+					bool res = P_BounceActor(this, onmo, true);
+					// If the bouncer is a missile and has hit the other actor it needs to be exploded here
+					// to be in line with the case when an actor's side is hit.
+					if (!res && (flags & MF_MISSILE))
+					{
+						P_DoMissileDamage(this, onmo);
+						P_ExplodeMissile(this, nullptr, onmo);
+					}
+				}
+				else
+				{
+					flags2 |= MF2_ONMOBJ;
+					Vel.Z = 0;
+					Crash();
+				}
+			}
+		}
+		else
+		{
+			P_ZMovement (this, oldfloorz);
+		}
+
+		if (ObjectFlags & OF_EuthanizeMe)
+			return;		// actor was destroyed
+	}
+	else if (Z() <= floorz)
+	{
+		Crash();
+		if (ObjectFlags & OF_EuthanizeMe)
+			return;		// actor was destroyed
+	}
+
+}
+
+DEFINE_ACTION_FUNCTION(AActor, FullAxisMovement)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	self->FullAxisMovement( DVector2(x, y));
+	return 0;
+}
+
+//
+// P_MobjThinker
+//
+void AActor::Tick ()
+{
 	//assert (state != NULL);
 	if (state == NULL)
 	{
@@ -3627,22 +4094,7 @@ void AActor::Tick ()
 	else
 	{
 
-		if (!player || !(player->cheats & CF_PREDICTING))
-		{
-			// Handle powerup effects here so that the order is controlled
-			// by the order in the inventory, not the order in the thinker table
-			AActor *item = Inventory;
-			
-			while (item != NULL)
-			{
-				IFVIRTUALPTRNAME(item, NAME_Inventory, DoEffect)
-				{
-					VMValue params[1] = { item };
-					VMCall(func, params, 1, nullptr, 0);
-				}
-				item = item->Inventory;
-			}
-		}
+		ApplyPowerups();
 
 		if (flags & MF_UNMORPHED)
 		{
@@ -3692,8 +4144,6 @@ void AActor::Tick ()
 				}
 			}
 		}
-
-		double oldz = Z();
 
 		// [RH] Give the pain elemental vertical friction
 		// This used to be in APainElemental::Tick but in order to use
@@ -3760,189 +4210,12 @@ void AActor::Tick ()
 			}
 		}
 
-		if (Level->BotInfo.botnum && !demoplayback &&
-			((flags & (MF_SPECIAL|MF_MISSILE)) || (flags3 & MF3_ISMONSTER)))
-		{
-			Level->BotInfo.BotTick(this);
-		}
+		BotThink();
 
 		// [RH] Consider carrying sectors here
-		DVector2 cumm(0, 0);
+		DVector2 cumm = CarryingSectorsHandling();
 
-		if ((((flags8 & MF8_INSCROLLSEC) && Level->Scrolls.Size() > 0) || player != NULL) && !(flags & MF_NOCLIP) && !(flags & MF_NOSECTOR))
-		{
-			double height, waterheight;	// killough 4/4/98: add waterheight
-			const msecnode_t *node;
-			int countx, county;
-
-			// Clear the flag for the next frame.
-			flags8 &= ~MF8_INSCROLLSEC;
-
-			// killough 3/7/98: Carry things on floor
-			// killough 3/20/98: use new sector list which reflects true members
-			// killough 3/27/98: fix carrier bug
-			// killough 4/4/98: Underwater, carry things even w/o gravity
-
-			// Move objects only if on floor or underwater,
-			// non-floating, and clipped.
-
-			countx = county = 0;
-
-			for (node = touching_sectorlist; node; node = node->m_tnext)
-			{
-				sector_t *sec = node->m_sector;
-				DVector2 scrollv;
-
-				if (Level->Scrolls.Size() > unsigned(sec->Index()))
-				{
-					scrollv = Level->Scrolls[sec->Index()];
-				}
-				else
-				{
-					scrollv.Zero();
-				}
-
-				if (player != NULL)
-				{
-					int scrolltype = sec->special;
-
-					if (scrolltype >= Scroll_North_Slow &&
-						scrolltype <= Scroll_SouthWest_Fast)
-					{ // Hexen scroll special
-						scrolltype -= Scroll_North_Slow;
-						if (Level->i_compatflags&COMPATF_RAVENSCROLL)
-						{
-							scrollv.X -= HexenCompatSpeeds[HexenScrollies[scrolltype][0]+4] * (1. / (32 * CARRYFACTOR));
-							scrollv.Y += HexenCompatSpeeds[HexenScrollies[scrolltype][1]+4] * (1. / (32 * CARRYFACTOR));
-
-						}
-						else
-						{
-							// Use speeds that actually match the scrolling textures!
-							scrollv.X -= HexenScrollies[scrolltype][0] * 0.5;
-							scrollv.Y += HexenScrollies[scrolltype][1] * 0.5;
-						}
-					}
-					else if (scrolltype >= Carry_East5 &&
-							 scrolltype <= Carry_West35)
-					{ // Heretic scroll special
-						scrolltype -= Carry_East5;
-						uint8_t dir = HereticScrollDirs[scrolltype / 5];
-						double carryspeed = HereticSpeedMuls[scrolltype % 5] * (1. / (32 * CARRYFACTOR));
-						if (scrolltype < 5 && !(Level->i_compatflags&COMPATF_RAVENSCROLL))
-						{
-							// Use speeds that actually match the scrolling textures!
-							carryspeed = (1 << ((scrolltype % 5) + 15)) / 65536.;
-						}
-						scrollv.X += carryspeed * ((dir & 3) - 1);
-						scrollv.Y += carryspeed * (((dir & 12) >> 2) - 1);
-					}
-					else if (scrolltype == dScroll_EastLavaDamage)
-					{ // Special Heretic scroll special
-						if (Level->i_compatflags&COMPATF_RAVENSCROLL)
-						{
-							scrollv.X += 28. / (32*CARRYFACTOR);
-						}
-						else
-						{
-							// Use a speed that actually matches the scrolling texture!
-							scrollv.X += 12. / (32 * CARRYFACTOR);
-						}
-					}
-					else if (scrolltype == Scroll_StrifeCurrent)
-					{ // Strife scroll special
-						int anglespeed = Level->GetFirstSectorTag(sec) - 100;
-						double carryspeed = (anglespeed % 10) / (16 * CARRYFACTOR);
-						DAngle angle = ((anglespeed / 10) * 45.);
-						scrollv += angle.ToVector(carryspeed);
-					}
-				}
-
-				if (scrollv.isZero())
-				{
-					continue;
-				}
-				sector_t *heightsec = sec->GetHeightSec();
-				if (flags & MF_NOGRAVITY && heightsec == NULL)
-				{
-					continue;
-				}
-				DVector3 pos = PosRelative(sec);
-				height = sec->floorplane.ZatPoint (pos);
-				double height2 = sec->floorplane.ZatPoint(this);
-				if (isAbove(height))
-				{
-					if (heightsec == NULL)
-					{
-						continue;
-					}
-
-					waterheight = heightsec->floorplane.ZatPoint (pos);
-					if (waterheight > height && Z() >= waterheight)
-					{
-						continue;
-					}
-				}
-
-				cumm += scrollv;
-				if (scrollv.X) countx++;
-				if (scrollv.Y) county++;
-			}
-
-			// Some levels designed with Boom in mind actually want things to accelerate
-			// at neighboring scrolling sector boundaries. But it is only important for
-			// non-player objects.
-			if (player != NULL || !(Level->i_compatflags & COMPATF_BOOMSCROLL))
-			{
-				if (countx > 1)
-				{
-					cumm.X /= countx;
-				}
-				if (county > 1)
-				{
-					cumm.Y /= county;
-				}
-			}
-		}
-
-		// [RH] If standing on a steep slope, fall down it
-		if ((flags & MF_SOLID) && !(flags & (MF_NOCLIP|MF_NOGRAVITY)) &&
-			!(flags & MF_NOBLOCKMAP) &&
-			Vel.Z <= 0 &&
-			floorz == Z())
-		{
-			secplane_t floorplane;
-
-			// Check 3D floors as well
-			floorplane = P_FindFloorPlane(floorsector, PosAtZ(floorz));
-
-			if (floorplane.fC() < MaxSlopeSteepness &&
-				floorplane.ZatPoint (PosRelative(floorsector)) <= floorz)
-			{
-				const msecnode_t *node;
-				bool dopush = true;
-
-				if (floorplane.fC() > MaxSlopeSteepness*2/3)
-				{
-					for (node = touching_sectorlist; node; node = node->m_tnext)
-					{
-						const sector_t *sec = node->m_sector;
-						if (sec->floorplane.fC() >= MaxSlopeSteepness)
-						{
-							if (floorplane.ZatPoint(PosRelative(node->m_sector)) >= Z() - MaxStepHeight)
-							{
-								dopush = false;
-								break;
-							}
-						}
-					}
-				}
-				if (dopush)
-				{
-					Vel += floorplane.Normal().XY();
-				}
-			}
-		}
+		SlopedFloorHandling();
 
 		// [RH] Missiles moving perfectly vertical need some X/Y movement, or they
 		// won't hurt anything. Don't do this if damage is 0! That way, you can
@@ -3954,117 +4227,8 @@ void AActor::Tick ()
 			VelFromAngle(MinVel);
 		}
 
-		// Handle X and Y velocities
-		BlockingMobj = nullptr;
-		sector_t* oldBlockingCeiling = BlockingCeiling;
-		sector_t* oldBlockingFloor = BlockingFloor;
-		Blocking3DFloor = nullptr;
-		BlockingFloor = nullptr;
-		BlockingCeiling = nullptr;
-		double oldfloorz = P_XYMovement (this, cumm);
-		if (ObjectFlags & OF_EuthanizeMe)
-		{ // actor was destroyed
-			return;
-		}
-		// [ZZ] trigger hit floor/hit ceiling actions from XY movement
-		if (BlockingFloor && BlockingFloor != oldBlockingFloor && (!player || !(player->cheats & CF_PREDICTING)) && BlockingFloor->SecActTarget)
-			BlockingFloor->TriggerSectorActions(this, SECSPAC_HitFloor);
-		if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && (!player || !(player->cheats & CF_PREDICTING)) && BlockingCeiling->SecActTarget)
-			BlockingCeiling->TriggerSectorActions(this, SECSPAC_HitCeiling);
-		if (Vel.X == 0 && Vel.Y == 0) // Actors at rest
-		{
-			if (flags2 & MF2_BLASTED)
-			{ // Reset to not blasted when velocities are gone
-				flags2 &= ~MF2_BLASTED;
-			}
-			if ((flags6 & MF6_TOUCHY) && !IsSentient())
-			{ // Arm a mine which has come to rest
-				flags6 |= MF6_ARMED;
-			}
-
-		}
-		if (Vel.Z != 0 || BlockingMobj || Z() != floorz)
-		{	// Handle Z velocity and gravity
-			if (((flags2 & MF2_PASSMOBJ) || (flags & MF_SPECIAL)) && !(Level->i_compatflags & COMPATF_NO_PASSMOBJ))
-			{
-				if (!(onmo = P_CheckOnmobj (this)))
-				{
-					P_ZMovement (this, oldfloorz);
-					flags2 &= ~MF2_ONMOBJ;
-				}
-				else
-				{
-					if (player)
-					{
-						if (Vel.Z < Level->gravity * Sector->gravity * (-1./100)// -655.36f)
-							&& !(flags&MF_NOGRAVITY))
-						{
-							PlayerLandedOnThing (this, onmo);
-						}
-					}
-					if (onmo->Top() - Z() <= MaxStepHeight)
-					{
-						if (player && player->mo == this)
-						{
-							player->viewheight -= onmo->Top() - Z();
-							double deltaview = player->GetDeltaViewHeight();
-							if (deltaview > player->deltaviewheight)
-							{
-								player->deltaviewheight = deltaview;
-							}
-						} 
-						SetZ(onmo->Top());
-					}
-					// Check for MF6_BUMPSPECIAL
-					// By default, only players can activate things by bumping into them
-					// We trigger specials as long as we are on top of it and not just when
-					// we land on it. This could be considered as gravity making us continually
-					// bump into it, but it also avoids having to worry about walking on to
-					// something without dropping and not triggering anything.
-					if ((onmo->flags6 & MF6_BUMPSPECIAL) && ((player != NULL)
-						|| ((onmo->activationtype & THINGSPEC_MonsterTrigger) && (flags3 & MF3_ISMONSTER))
-						|| ((onmo->activationtype & THINGSPEC_MissileTrigger) && (flags & MF_MISSILE))
-						) && (Level->maptime > onmo->lastbump)) // Leave the bumper enough time to go away
-					{
-						if (player == NULL || !(player->cheats & CF_PREDICTING))
-						{
-							if (P_ActivateThingSpecial(onmo, this))
-								onmo->lastbump = Level->maptime + TICRATE;
-						}
-					}
-					if (Vel.Z != 0 && (BounceFlags & BOUNCE_Actors))
-					{
-						bool res = P_BounceActor(this, onmo, true);
-						// If the bouncer is a missile and has hit the other actor it needs to be exploded here
-						// to be in line with the case when an actor's side is hit.
-						if (!res && (flags & MF_MISSILE))
-						{
-							P_DoMissileDamage(this, onmo);
-							P_ExplodeMissile(this, nullptr, onmo);
-						}
-					}
-					else
-					{
-						flags2 |= MF2_ONMOBJ;
-						Vel.Z = 0;
-						Crash();
-					}
-				}
-			}
-			else
-			{
-				P_ZMovement (this, oldfloorz);
-			}
-
-			if (ObjectFlags & OF_EuthanizeMe)
-				return;		// actor was destroyed
-		}
-		else if (Z() <= floorz)
-		{
-			Crash();
-			if (ObjectFlags & OF_EuthanizeMe)
-				return;		// actor was destroyed
-		}
+		// Handle X, Y and Z velocities
+		FullAxisMovement(cumm);
 
 		CheckPortalTransition(true);
 
@@ -4089,14 +4253,6 @@ void AActor::Tick ()
 		}
 	}
 
-	assert (state != NULL);
-	if (state == NULL)
-	{
-		Destroy();
-		return;
-	}
-	if (!CheckNoDelay())
-		return; // freed itself
 
 	UpdateRenderSectorList();
 
@@ -4108,45 +4264,10 @@ void AActor::Tick ()
 		if (ObjectFlags & OF_EuthanizeMe) return;
 	}
 
-	if (tics != -1)
-	{
-		// cycle through states, calling action functions at transitions
-		// [RH] Use tics <= 0 instead of == 0 so that spawnstates
-		// of 0 tics work as expected.
-		if (--tics <= 0)
-		{
-			if (!SetState(state->GetNextState()))
-				return; 		// freed itself
-		}
-	}
+	if(!AdvanceState() )
+		return;
 
-	if (tics == -1 || state->GetCanRaise())
-	{
-		int respawn_monsters = G_SkillProperty(SKILLP_Respawn);
-		// check for nightmare respawn
-		if (!(flags5 & MF5_ALWAYSRESPAWN))
-		{
-			if (!respawn_monsters || !(flags3 & MF3_ISMONSTER) || (flags2 & MF2_DORMANT) || (flags5 & MF5_NEVERRESPAWN))
-				return;
-
-			int limit = G_SkillProperty (SKILLP_RespawnLimit);
-			if (limit > 0 && skillrespawncount >= limit)
-				return;
-		}
-
-		movecount++;
-
-		if (movecount < respawn_monsters)
-			return;
-
-		if (Level->time & 31)
-			return;
-
-		if (pr_nightmarerespawn() > 4)
-			return;
-
-		P_NightmareRespawn (this);
-	}
+	RespawnHandling();
 }
 
 //==========================================================================

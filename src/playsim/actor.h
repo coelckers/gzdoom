@@ -715,6 +715,12 @@ public:
 	virtual void Deactivate(AActor *activator);
 	void CallDeactivate(AActor *activator);
 
+	void BotThink();
+
+	void SlopedFloorHandling();
+	//carry offset is additional velocity produced from standing in carrying sectors
+	void FullAxisMovement(DVector2 carryoffset = DVector2(0.0, 0.0) );
+
 	// Called when actor dies
 	virtual void Die (AActor *source, AActor *inflictor, int dmgflags = 0, FName MeansOfDeath = NAME_None);
 	void CallDie(AActor *source, AActor *inflictor, int dmgflags = 0, FName MeansOfDeath = NAME_None);
@@ -770,6 +776,8 @@ public:
 
 	// Tosses an item out of the inventory.
 	AActor *DropInventory (AActor *item, int amt = -1);
+
+	void ApplyPowerups();
 
 	// Removes all items from the inventory.
 	void ClearInventory();
@@ -961,6 +969,8 @@ public:
 	void SetTag(const char *def);
 	const char *GetCharacterName() const;
 
+	DVector2 CarryingSectorsHandling();
+	void RespawnHandling();
 	// Triggers SECSPAC_Exit/SECSPAC_Enter and related events if oldsec != current sector
 	void CheckSectorTransition(sector_t *oldsec);
 	void UpdateRenderSectorList();
@@ -1234,6 +1244,7 @@ public:
 	bool IsMapActor();
 	int GetTics(FState * newstate);
 	bool SetState (FState *newstate, bool nofunction=false);
+	bool AdvanceState();
 	virtual void SplashCheck();
 	virtual bool UpdateWaterLevel (bool splash=true);
 	bool isFast();
