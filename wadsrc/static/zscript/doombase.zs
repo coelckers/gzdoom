@@ -26,6 +26,7 @@ extend struct _
 extend struct TexMan
 {
 	native static void SetCameraToTexture(Actor viewpoint, String texture, double fov);
+	native static void SetCameraTextureAspectRatio(String texture, double aspectScale, bool useTextureRatio = true);
 	deprecated("3.8", "Use Level.ReplaceTextures() instead") static void ReplaceTextures(String from, String to, int flags)
 	{
 		level.ReplaceTextures(from, to, flags);
