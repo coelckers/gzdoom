@@ -140,6 +140,33 @@ enum EPrintLevel
 	PRINT_NOLOG = 2048,		// Flag - do not print to log file
 };
 
+/*
+// These are here to document the intrinsic methods and fields available on
+// the built-in ZScript types
+struct Vector2
+{
+	Vector2(x, y);
+	double x, y;
+	native double Length();
+	native Vector2 Unit();
+	// The dot product of two vectors can be calculated like this:
+	// double d = a dot b;
+}
+
+struct Vector3
+{
+	Vector3(x, y, z);
+	double x, y, z;
+	Vector2 xy; // Convenient access to the X and Y coordinates of a 3D vector
+	native double Length();
+	native Vector3 Unit();
+	// The dot product of two vectors can be calculated like this:
+	// double d = a dot b;
+	// The cross product of two vectors can be calculated like this:
+	// Vector3 d = a cross b;
+}
+*/
+
 struct _ native	// These are the global variables, the struct is only here to avoid extending the parser for this.
 {
 	native readonly Array<class> AllClasses;
@@ -245,6 +272,47 @@ struct TexMan
 	native static bool OkForLocalization(TextureID patch, String textSubstitute);
 	native static bool UseGamePalette(TextureID tex);
 }
+
+/*
+// Intrinsic TextureID methods
+// This isn't really a class, and can be used as an integer
+struct TextureID
+{
+	native bool IsValid();
+	native bool IsNull();
+	native bool Exists();
+	native void SetInvalid();
+	native void SetNull();
+}
+
+// 32-bit RGBA color - each component is one byte, or 8-bit
+// This isn't really a class, and can be used as an integer
+struct Color
+{
+	// Constructor - alpha channel is optional
+	Color(int alpha, int red, int green, int blue);
+	Color(int red, int green, int blue); // Alpha is 0 if omitted
+	int r; // Red
+	int g; // Green
+	int b; // Blue
+	int a; // Alpha
+}
+
+// Name - a string with an integer ID
+struct Name
+{
+	Name(Name name);
+	Name(String name);
+}
+
+// Sound ID - can be created by casting from a string (name from SNDINFO) or an
+// integer (sound ID as integer).
+struct Sound
+{
+	Sound(String soundName);
+	Sound(int id);
+}
+*/
 
 enum EScaleMode
 {
@@ -479,7 +547,8 @@ struct Font native
 
 	const TEXTCOLOR_CHAT			= "\034*";
 	const TEXTCOLOR_TEAMCHAT		= "\034!";
-	
+	// native Font(const String name);  // String/name to font casts
+	// native Font(const Name name);
 
 	native int GetCharWidth(int code);
 	native int StringWidth(String code);
@@ -568,6 +637,55 @@ class Object native
 
 	// This does not call into the native method of the same name to avoid problems with objects that get garbage collected late on shutdown.
 	virtual virtualscope void OnDestroy() {}
+	//
+	// Object intrinsics
+	// Every ZScript "class" inherits from Object, and so inherits these methods as well
+	// clearscope bool IsAbstract(); // Intrinsic - Query whether or not the class of this object is abstract
+	// clearscope Object GetParentClass(); // Intrinsic - Get the parent class of this object
+	// clearscope Name GetClassName(); // Intrinsic - Get the name of this object's class
+	// clearscope Class<Object> GetClass(); // Intrinsic - Get the object's class
+	// clearscope Object new(class<Object> type); // Intrinsic - Create a new object with this class. This is only valid for thinkers and plain objects, except menus. For actors, use Actor.Spawn();
+	//
+	//
+	// Intrinsic random number generation functions. Note that the square
+	// bracket syntax for specifying an RNG ID is only available for these
+	// functions.
+	// clearscope void SetRandomSeed[Name rngId = 'None'](int seed); // Intrinsic - Set the seed for the given RNG.
+	// clearscope int Random[Name rngId = 'None'](int min, int max); // Intrinsic - Use the given RNG to generate a random integer number in the range (min, max) inclusive.
+	// clearscope int Random2[Name rngId = 'None'](int mask); // Intrinsic - Use the given RNG to generate a random integer number, and do a "union" (bitwise AND, AKA &) operation with the bits in the mask integer.
+	// clearscope int FRandom[Name rngId = 'None'](double min, double max); // Intrinsic - Use the given RNG to generate a random real number in the range (min, max) inclusive.
+	// clearscope int RandomPick[Name rngId = 'None'](int choices...); // Intrinsic - Use the given RNG to generate a random integer from the given choices.
+	// clearscope double FRandomPick[Name rngId = 'None'](double choices...); // Intrinsic - Use the given RNG to generate a random real number from the given choices.
+	//
+	//
+	// Intrinsic math functions - the argument and return types for these
+	// functions depend on the arguments given. Other than that, they work the
+	// same way similarly-named functions in other programming languages work.
+	// Note that trigonometric functions work with degrees instead of radians
+	// clearscope T abs(T x);
+	// clearscope T atan2(T y, T x); // NOTE: Returns a value in degrees instead of radians
+	// clearscope T vectorangle(T x, T y); // Same as Atan2 with the arguments in a different order
+	// clearscope T min(T x...);
+	// clearscope T max(T x...);
+	// clearscope T clamp(T x, T min, T max);
+	//
+	// These math functions only work with doubles - they are defined in FxFlops
+	// clearscope double exp(double x);
+	// clearscope double log(double x);
+	// clearscope double log10(double x);
+	// clearscope double sqrt(double x);
+	// clearscope double ceil(double x);
+	// clearscope double floor(double x);
+	// clearscope double acos(double x);
+	// clearscope double asin(double x);
+	// clearscope double atan(double x);
+	// clearscope double cos(double x);
+	// clearscope double sin(double x);
+	// clearscope double tan(double x);
+	// clearscope double cosh(double x);
+	// clearscope double sinh(double x);
+	// clearscope double tanh(double x);
+	// clearscope double round(double x);
 }
 
 class BrokenLines : Object native version("2.4")
@@ -634,11 +752,14 @@ enum EmptyTokenType
 }
 
 // Although String is a builtin type, this is a convenient way to attach methods to it.
+// All of these methods are available on strings
 struct StringStruct native
 {
 	native static vararg String Format(String fmt, ...);
 	native vararg void AppendFormat(String fmt, ...);
-
+	// native int Length();  // Intrinsic
+	// native bool operator~==(String other)  // Case-insensitive equality comparison
+	// native String operator..(String other)  // Concatenate with another String
 	native void Replace(String pattern, String replacement);
 	native String Left(int len) const;
 	native String Mid(int pos = 0, int len = 2147483647) const;
